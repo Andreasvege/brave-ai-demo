@@ -1,65 +1,103 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import {
+  OutcomeBadge,
+  StatusBadge,
+  formatDuration,
+  formatDate,
+} from "./ui/badges";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function CallListPage() {
+  const calls = await prisma.call.findMany({ orderBy: { createdAt: "desc" } });
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="fade-up">
+      <div className="mb-8 flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Samtaler</h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            {calls.length === 0
+              ? "Ingen samtaler ennå"
+              : `${calls.length} ${calls.length === 1 ? "samtale" : "samtaler"} analysert`}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </div>
+
+      {calls.length === 0 ? (
+        <div className="card flex flex-col items-center gap-4 px-8 py-20 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
+            <MicIcon />
+          </div>
+          <div>
+            <p className="font-medium">Ta opp din første samtale</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Mikrofonopptak transkriberes og analyseres automatisk.
+            </p>
+          </div>
+          <Link
+            href="/record"
+            className="mt-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Start opptak
+          </Link>
         </div>
-      </main>
+      ) : (
+        <ul className="card divide-y divide-border overflow-hidden">
+          {calls.map((call, i) => {
+            const analysis = call.analysis ? JSON.parse(call.analysis) : null;
+            return (
+              <li key={call.id} className="fade-up" style={{ animationDelay: `${i * 40}ms` }}>
+                <Link
+                  href={`/calls/${call.id}`}
+                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-bg"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {analysis?.suggested_crm_update?.company ||
+                        analysis?.suggested_crm_update?.contact_name ||
+                        "Ukjent motpart"}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-faint">
+                      {analysis?.summary || call.error || "Ingen analyse ennå"}
+                    </p>
+                  </div>
+                  <span className="hidden font-mono text-xs text-ink-faint sm:block">
+                    {formatDuration(call.durationSec)}
+                  </span>
+                  <span className="hidden text-xs text-ink-faint sm:block">
+                    {formatDate(call.createdAt)}
+                  </span>
+                  {call.status === "DONE" ? (
+                    <OutcomeBadge outcome={analysis?.outcome ?? null} />
+                  ) : (
+                    <StatusBadge status={call.status} />
+                  )}
+                  <ChevronIcon />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v5" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-ink-faint">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
