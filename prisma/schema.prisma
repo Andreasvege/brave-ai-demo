@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// SQLite-connectoren støtter ikke enum/Json: status er en av
+// RECORDED | TRANSCRIBING | ANALYZING | DONE | FAILED, analysis er JSON-streng.
+model Call {
+  id          String   @id @default(cuid())
+  status      String   @default("RECORDED")
+  durationSec Int?
+  notes       String?
+  transcript  String?
+  analysis    String?
+  error       String?
+  createdAt   DateTime @default(now())
+}
