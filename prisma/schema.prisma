@@ -11,6 +11,7 @@ datasource db {
 // status er en av RECORDED | TRANSCRIBING | ANALYZING | DONE | FAILED, analysis er JSON-streng.
 model Call {
   id          String   @id @default(cuid())
+  title       String?
   status      String   @default("RECORDED")
   durationSec Int?
   notes       String?

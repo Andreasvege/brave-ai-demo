@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SpeechRecognizer } from "microsoft-cognitiveservices-speech-sdk";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon, CheckIcon } from "@/components/icons";
 
+type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
 
 type Step = { key: string; label: string };
@@ -14,7 +16,7 @@ const LIVE_STEPS: Step[] = [
   { key: "ANALYZING", label: "Analyserer" },
   { key: "DONE", label: "Ferdig" },
 ];
-const UPLOAD_STEPS: Step[] = [
+const BATCH_STEPS: Step[] = [
   { key: "TRANSCRIBING", label: "Transkriberer" },
   { key: "ANALYZING", label: "Analyserer" },
   { key: "DONE", label: "Ferdig" },
@@ -22,6 +24,7 @@ const UPLOAD_STEPS: Step[] = [
 
 export default function RecordPage() {
   const router = useRouter();
+  const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("live");
   const [phase, setPhase] = useState<Phase>("idle");
   const [steps, setSteps] = useState<Step[]>(LIVE_STEPS);
   const [stepKey, setStepKey] = useState("ANALYZING");
@@ -29,15 +32,17 @@ export default function RecordPage() {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Live-transkript: ferdige fraser + frasen som er underveis.
-  // Refs speiler state så stopRecording alltid ser siste versjon
-  // (recognized-events kan komme etter at klikket «låste» closuren).
+  // Live-transkripsjon
   const [phrases, setPhrases] = useState<string[]>([]);
   const [interim, setInterim] = useState("");
   const phrasesRef = useRef<string[]>([]);
   const interimRef = useRef("");
-
   const recognizer = useRef<SpeechRecognizer | null>(null);
+
+  // Batch-opptak
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const poller = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptBox = useRef<HTMLDivElement | null>(null);
@@ -47,10 +52,10 @@ export default function RecordPage() {
       if (timer.current) clearInterval(timer.current);
       if (poller.current) clearInterval(poller.current);
       recognizer.current?.close();
+      mediaRecorder.current?.stop();
     };
   }, []);
 
-  // Hold transkriptpanelet scrollet til bunnen mens teksten vokser
   useEffect(() => {
     const box = transcriptBox.current;
     if (box) box.scrollTop = box.scrollHeight;
@@ -60,49 +65,11 @@ export default function RecordPage() {
     setError(null);
     setPhase("connecting");
     try {
-      const tokenRes = await fetch("/api/speech-token", { method: "POST" });
-      const { token, region, error: tokenError } = await tokenRes.json();
-      if (!tokenRes.ok) throw new Error(tokenError || "Kunne ikke hente taletoken");
-
-      const sdk = await import("microsoft-cognitiveservices-speech-sdk");
-
-      const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
-      speechConfig.speechRecognitionLanguage = "nb-NO";
-      // KUN mikrofon — aldri systemlyd (GDPR)
-      const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-      const rec = new sdk.SpeechRecognizer(speechConfig, audioConfig);
-
-      rec.recognizing = (_s, e) => {
-        interimRef.current = e.result.text;
-        setInterim(e.result.text);
-      };
-      rec.recognized = (_s, e) => {
-        if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text) {
-          phrasesRef.current = [...phrasesRef.current, e.result.text];
-          setPhrases(phrasesRef.current);
-        }
-        interimRef.current = "";
-        setInterim("");
-      };
-      rec.canceled = (_s, e) => {
-        if (e.reason === sdk.CancellationReason.Error) {
-          setError(`Transkribering avbrutt: ${e.errorDetails}`);
-          setPhase("error");
-        }
-      };
-
-      await new Promise<void>((resolve, reject) =>
-        rec.startContinuousRecognitionAsync(resolve, reject)
-      );
-
-      recognizer.current = rec;
-      phrasesRef.current = [];
-      interimRef.current = "";
-      setPhrases([]);
-      setInterim("");
-      setSeconds(0);
-      timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-      setPhase("recording");
+      if (transcribeMode === "live") {
+        await startLive();
+      } else {
+        await startBatch();
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -113,10 +80,79 @@ export default function RecordPage() {
     }
   }
 
+  async function startLive() {
+    const tokenRes = await fetch("/api/speech-token", { method: "POST" });
+    const { token, region, error: tokenError } = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(tokenError || "Kunne ikke hente taletoken");
+
+    const sdk = await import("microsoft-cognitiveservices-speech-sdk");
+    const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
+    speechConfig.speechRecognitionLanguage = "nb-NO";
+    const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
+    const rec = new sdk.SpeechRecognizer(speechConfig, audioConfig);
+
+    rec.recognizing = (_s, e) => {
+      interimRef.current = e.result.text;
+      setInterim(e.result.text);
+    };
+    rec.recognized = (_s, e) => {
+      if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text) {
+        phrasesRef.current = [...phrasesRef.current, e.result.text];
+        setPhrases(phrasesRef.current);
+      }
+      interimRef.current = "";
+      setInterim("");
+    };
+    rec.canceled = (_s, e) => {
+      if (e.reason === sdk.CancellationReason.Error) {
+        setError(`Transkribering avbrutt: ${e.errorDetails}`);
+        setPhase("error");
+      }
+    };
+
+    await new Promise<void>((resolve, reject) =>
+      rec.startContinuousRecognitionAsync(resolve, reject)
+    );
+
+    recognizer.current = rec;
+    phrasesRef.current = [];
+    interimRef.current = "";
+    setPhrases([]);
+    setInterim("");
+    setSeconds(0);
+    timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    setPhase("recording");
+  }
+
+  async function startBatch() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const recorder = new MediaRecorder(stream);
+    audioChunks.current = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.current.push(e.data);
+    };
+
+    recorder.start(500);
+    mediaRecorder.current = recorder;
+    setSeconds(0);
+    timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    setPhase("recording");
+  }
+
   async function stopRecording() {
+    if (timer.current) clearInterval(timer.current);
+
+    if (transcribeMode === "live") {
+      await stopLive();
+    } else {
+      await stopBatch();
+    }
+  }
+
+  async function stopLive() {
     const rec = recognizer.current;
     if (!rec) return;
-    if (timer.current) clearInterval(timer.current);
 
     await new Promise<void>((resolve) =>
       rec.stopContinuousRecognitionAsync(resolve, () => resolve())
@@ -124,7 +160,6 @@ export default function RecordPage() {
     rec.close();
     recognizer.current = null;
 
-    // Ta med ev. interim-tekst som ikke rakk å bli finalisert
     const transcript = [...phrasesRef.current, interimRef.current]
       .join(" ")
       .replace(/\s+/g, " ")
@@ -134,7 +169,54 @@ export default function RecordPage() {
       setPhase("error");
       return;
     }
-    submitLive(transcript, seconds);
+    await submitLive(transcript, seconds);
+  }
+
+  async function stopBatch() {
+    const recorder = mediaRecorder.current;
+    if (!recorder) return;
+
+    const blob = await new Promise<Blob>((resolve) => {
+      recorder.onstop = () => {
+        resolve(new Blob(audioChunks.current, { type: recorder.mimeType || "audio/webm" }));
+      };
+      recorder.stop();
+      recorder.stream.getTracks().forEach((t) => t.stop());
+    });
+
+    mediaRecorder.current = null;
+    const file = new File([blob], "opptak.webm", { type: blob.type });
+    await submitFile(file, seconds);
+  }
+
+  async function abortRecording() {
+    if (timer.current) clearInterval(timer.current);
+
+    if (transcribeMode === "live") {
+      const rec = recognizer.current;
+      if (rec) {
+        await new Promise<void>((resolve) =>
+          rec.stopContinuousRecognitionAsync(resolve, () => resolve())
+        );
+        rec.close();
+        recognizer.current = null;
+      }
+      phrasesRef.current = [];
+      interimRef.current = "";
+      setPhrases([]);
+      setInterim("");
+    } else {
+      const recorder = mediaRecorder.current;
+      if (recorder) {
+        recorder.stream.getTracks().forEach((t) => t.stop());
+        recorder.stop();
+        mediaRecorder.current = null;
+      }
+      audioChunks.current = [];
+    }
+
+    setSeconds(0);
+    setPhase("idle");
   }
 
   async function submitLive(transcript: string, durationSec: number) {
@@ -153,14 +235,12 @@ export default function RecordPage() {
     }
   }
 
-  async function submitFile(file: File) {
+  async function submitFile(file: File, durationSec?: number) {
     setPhase("processing");
-    setSteps(UPLOAD_STEPS);
+    setSteps(BATCH_STEPS);
     setStepKey("TRANSCRIBING");
-    // eslint-disable-next-line react-hooks/purity -- kjøres kun fra event-handler, aldri under render
     const startedAt = Date.now();
 
-    // Batch-veien er synkron på serveren; poll lista for ekte status underveis.
     poller.current = setInterval(async () => {
       try {
         const res = await fetch("/api/calls");
@@ -178,6 +258,7 @@ export default function RecordPage() {
       const formData = new FormData();
       formData.append("audio", file, file.name);
       formData.append("notes", notes);
+      if (durationSec) formData.append("durationSec", String(durationSec));
       await postAndNavigate(formData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Noe gikk galt");
@@ -205,7 +286,7 @@ export default function RecordPage() {
 
   const mm = Math.floor(seconds / 60);
   const ss = String(seconds % 60).padStart(2, "0");
-  const isLive = phase === "recording";
+  const isRecording = phase === "recording";
   const isBusy = phase === "processing" || phase === "done";
 
   return (
@@ -220,34 +301,77 @@ export default function RecordPage() {
           <PipelineStatus steps={steps} stepKey={stepKey} />
         ) : (
           <>
+            {/* Transkripsjonsmodus-toggle */}
+            <div
+              role="group"
+              aria-label="Transkripsjonsmodus"
+              className="flex w-full max-w-xs rounded-xl border border-border bg-bg p-1"
+            >
+              {(["live", "batch"] as TranscribeMode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => { if (!isRecording) setTranscribeMode(m); }}
+                  aria-pressed={transcribeMode === m}
+                  disabled={isRecording}
+                  className={`flex-1 rounded-[9px] py-1.5 text-sm font-medium transition-all disabled:opacity-40 ${
+                    transcribeMode === m
+                      ? "bg-surface text-ink shadow-sm ring-1 ring-border"
+                      : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  {m === "live" ? "Live-transkripsjon" : "Batch-transkripsjon"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-ink-faint">
+              {transcribeMode === "live"
+                ? "Transkriberes underveis — du ser teksten mens du snakker"
+                : "Transkriberes etter opptaket — høyere nøyaktighet"}
+            </p>
+
+            {/* Mikrofonknapp */}
             <button
-              onClick={isLive ? stopRecording : startRecording}
+              onClick={isRecording ? stopRecording : startRecording}
               disabled={phase === "connecting"}
-              aria-label={isLive ? "Stopp opptak" : "Start opptak"}
-              className={`flex h-24 w-24 items-center justify-center rounded-full transition-all disabled:opacity-60 ${
-                isLive
+              aria-label={isRecording ? "Stopp opptak" : "Start opptak"}
+              className={`mt-8 flex h-24 w-24 items-center justify-center rounded-full transition-all disabled:opacity-60 ${
+                isRecording
                   ? "rec-pulse bg-accent text-white"
                   : "border border-border-strong bg-surface text-ink hover:border-accent-ink hover:text-accent-ink"
               }`}
             >
               {phase === "connecting" ? (
                 <Spinner className="text-xl" />
-              ) : isLive ? (
+              ) : isRecording ? (
                 <span className="block h-7 w-7 rounded-[5px] bg-white" />
               ) : (
                 <MicIcon width={30} height={30} strokeWidth="1.6" />
               )}
             </button>
 
+            {isRecording && (
+              <Button
+                variant="dangerGhost"
+                size="sm"
+                className="mt-3"
+                onClick={abortRecording}
+              >
+                Avbryt opptak
+              </Button>
+            )}
+
             <p className="mt-5 font-mono text-3xl tabular-nums tracking-tight">
               {mm}:{ss}
             </p>
             <p className="mt-1 text-sm text-ink-faint">
               {phase === "connecting"
-                ? "Kobler til Azure Speech…"
-                : isLive
-                  ? "Tar opp og transkriberer live — klikk for å stoppe"
-                  : "Klikk for å starte opptak med live-transkribering"}
+                ? "Kobler til…"
+                : isRecording
+                  ? transcribeMode === "live"
+                    ? "Tar opp og transkriberer live — klikk for å stoppe"
+                    : "Tar opp — transkriberes når du stopper"
+                  : "Klikk for å starte opptak"}
             </p>
 
             {error && (
@@ -256,11 +380,12 @@ export default function RecordPage() {
               </p>
             )}
 
-            {(isLive || phrases.length > 0) && (
+            {/* Live-transkriptpanel */}
+            {transcribeMode === "live" && (isRecording || phrases.length > 0) && (
               <div className="mt-6 w-full">
                 <div className="flex items-center justify-between">
                   <span className="kicker">Live-transkript</span>
-                  {isLive && (
+                  {isRecording && (
                     <span className="flex items-center gap-1.5 text-xs text-accent-ink">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
                       direkte
@@ -284,6 +409,7 @@ export default function RecordPage() {
               </div>
             )}
 
+            {/* Notater */}
             <div className="mt-6 w-full">
               <label htmlFor="notes" className="kicker block">
                 Notater under samtalen
@@ -298,7 +424,8 @@ export default function RecordPage() {
               />
             </div>
 
-            {!isLive && phase !== "connecting" && (
+            {/* Filopplasting */}
+            {!isRecording && phase !== "connecting" && (
               <div className="mt-6 w-full border-t border-border pt-5 text-center">
                 <label className="cursor-pointer text-sm text-ink-soft underline decoration-border-strong underline-offset-4 transition-colors hover:text-accent-ink">
                   …eller last opp en lydfil (m4a, webm, wav, mp3)
@@ -334,9 +461,7 @@ function PipelineStatus({ steps, stepKey }: { steps: Step[]; stepKey: string }) 
           ) : (
             <span className="h-5 w-5 rounded-full border border-border" />
           )}
-          <span
-            className={`text-sm ${i <= idx ? "font-medium text-ink" : "text-ink-faint"}`}
-          >
+          <span className={`text-sm ${i <= idx ? "font-medium text-ink" : "text-ink-faint"}`}>
             {s.label}
             {i === idx && s.key !== "DONE" ? "…" : ""}
           </span>

@@ -7,7 +7,7 @@ import { Card, CardAccentHeader, CardContent, Kicker } from "@/components/ui/car
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { OutcomeBadge, StatusBadge } from "@/components/call-badges";
-import { CopyButton, DeleteButton } from "./actions";
+import { CopyButton, EditableTitle, ReanalyzeButton } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +55,11 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
       </Link>
 
       <div className="mt-4 mb-8 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {crm?.company || crm?.contact_name || "Samtale"}
-        </h1>
+        <EditableTitle
+          callId={call.id}
+          initialTitle={call.title ?? null}
+          fallback={crm?.company || crm?.contact_name || "Samtale"}
+        />
         {call.status === "DONE" && analysis ? (
           <OutcomeBadge outcome={analysis.outcome} />
         ) : (
@@ -185,6 +187,8 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                   <dd className="font-medium">{crm.company ?? "–"}</dd>
                   <dt className="text-ink-faint">Kontakt</dt>
                   <dd className="font-medium">{crm.contact_name ?? "–"}</dd>
+                  <dt className="text-ink-faint">Kontakt-rolle</dt>
+                  <dd className="font-medium">{crm.contact_role ?? "–"}</dd>
                   <dt className="text-ink-faint">Status</dt>
                   <dd className="font-medium">{crm.status}</dd>
                 </dl>
@@ -221,8 +225,8 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
             </Card>
           )}
 
-          <div className="fade-up flex justify-end" style={{ animationDelay: "210ms" }}>
-            <DeleteButton callId={call.id} />
+          <div className="fade-up" style={{ animationDelay: "210ms" }}>
+            <ReanalyzeButton callId={call.id} />
           </div>
         </div>
       </div>

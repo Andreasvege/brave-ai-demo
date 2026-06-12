@@ -37,7 +37,7 @@ export default async function RootLayout({
         <header className="sticky top-0 z-10 bg-bg/85 backdrop-blur-sm">
           <div className="brand-stripe" />
           <div className="border-b border-border">
-            <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
+            <div className="mx-auto flex h-14 w-full items-center justify-between px-8">
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   src="/BraveAiFull.png"
@@ -50,19 +50,13 @@ export default async function RootLayout({
               <nav className="flex items-center gap-2 text-sm">
                 {session?.user && (
                   <>
-                    <Link
-                      href="/"
-                      className={buttonVariants({ variant: "ghost", size: "sm" })}
-                    >
+                    <Link href="/" className={buttonVariants({ variant: "ghost", size: "sm" })}>
                       Samtaler
                     </Link>
-                    <Link
-                      href="/record"
-                      className={`ml-2 ${buttonVariants({ variant: "accent", size: "sm" })}`}
-                    >
+                    <Link href="/record" className={`ml-2 ${buttonVariants({ variant: "accent", size: "sm" })}`}>
                       Nytt opptak
                     </Link>
-                    <span className="ml-4 flex items-center gap-2 text-xs text-ink-soft">
+                    <span className="ml-20 flex items-center gap-2 text-xs text-ink-soft">
                       {session.user.image && (
                         <Image
                           src={session.user.image}

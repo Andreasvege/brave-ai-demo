@@ -25,6 +25,8 @@ const ANALYSIS_SCHEMA = `{
   "suggested_crm_update": {
     "company": string | null,
     "contact_name": string | null,
+    "contact_role": string | null,
+    "phone_number": number | null,
     "status": string,
     "notes": "forslag til CRM-notat"
   },
@@ -46,6 +48,8 @@ export type Analysis = {
   suggested_crm_update: {
     company: string | null;
     contact_name: string | null;
+    contact_role: string | null,
+    phone_number: number | null,
     status: string;
     notes: string;
   };
@@ -59,7 +63,8 @@ export type Analysis = {
 
 export async function analyzeTranscript(
   transcript: string,
-  notes: string | null
+  notes: string | null,
+  extraContext?: string //
 ): Promise<Analysis> {
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
@@ -76,7 +81,10 @@ ${ANALYSIS_SCHEMA}
 ${transcript}
 
 === KONSULENTENS LIVE-NOTATER ===
-${notes?.trim() ? notes : "(ingen notater)"}`,
+${notes?.trim() ? notes : "(ingen notater)"}
+
+=== TILLEGGSINFORMASJON FRA BRUKER ===
+${extraContext?.trim() ? extraContext : "(ingen tilleggsinformasjon)"}`,
       },
     ],
   });
