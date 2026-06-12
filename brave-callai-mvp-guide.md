@@ -1,10 +1,49 @@
+# DEMO-SCOPE (overstyrer resten av dokumentet ved konflikt)
+
+## Tekniske rammer
+- Azure Speech: region **westeurope**, fast transcription, **api-version 2025-10-15**, locale nb-NO
+- Database: **SQLite** via Prisma (ikke Postgres)
+- **Ingen auth**, ingen ekte CRM/kalender-integrasjon
+- Claude API: claude-sonnet-4-5, analyse-prompten lenger ned i dokumentet
+
+## Sider og funksjonalitet
+1. **/record** — opptaksside:
+   - Stor start/stopp-knapp med timer (MediaRecorder, KUN mikrofon, webm/opus)
+   - Filopplasting som alternativ (m4a/webm/wav/mp3)
+   - **Notatfelt (textarea) synlig under opptak** — konsulenten skriver live-notater
+     mens samtalen pågår. Lagres som `notes` på Call.
+2. **Pipeline-status** — vis tydelig fremdrift: "Transkriberer…" → "Analyserer…" → ferdig
+3. **/ (liste)** — alle samtaler: dato, varighet, outcome-badge, klikk til detalj
+4. **/calls/[id]** — detaljside:
+   - Transkript (sammenleggbar)
+   - Oppsummering + neste steg
+   - Salgstips med sitater fra samtalen
+   - CRM-kort: ferdig notat + felter, "Kopier notat"-knapp (clipboard, ingen API)
+   - Møtekort: generer ferdig utfylt Google Calendar-lenke
+     (https://calendar.google.com/calendar/render?action=TEMPLATE&text=...&details=...&dates=...)
+   - Slett-knapp (hard delete)
+
+## Analyse-input
+Claude-prompten skal motta BÅDE transkriptet OG konsulentens notater, som to
+adskilte seksjoner. Notatene beskriver ofte hva motparten sa (transkriptet er
+én-sidet), så de er kritisk kontekst — instruér modellen om dette eksplisitt.
+
+## Visuelt
+- Lys, clean, Linear/Notion-estetikk: hvit/varm-grå bakgrunn, ett aksentfarge,
+  god whitespace, ingen default-Tailwind-følelse
+- Analyse-kortene på detaljsiden er de visuelle heltene
+- Alt UI på **norsk**
+
+## Bevisst UTE av demo
+Auth, ekte HubSpot/kalender-API, redigering av analyser, aggregert statistikk,
+sanntidstranskribering, multi-bruker
+
+Resten av GUIDEN:
+
 # Brave CallAI — MVP-guide
 
 En-sidet transkribering av cold calls med AI-analyse: oppsummering, salgstips, møtebooking og CRM-utkast. Internt verktøy først, salgbart produkt senere.
 
----
-
-westeurope, api-version 2025-10-15, SQLite, ingen auth
 
 ---
 
