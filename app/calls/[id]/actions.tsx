@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -13,16 +14,9 @@ export function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <button
-      onClick={copy}
-      className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
-        copied
-          ? "bg-green-soft text-green-ink"
-          : "bg-ink text-white hover:opacity-85"
-      }`}
-    >
+    <Button onClick={copy} variant={copied ? "success" : "primary"} size="sm">
       {copied ? "Kopiert ✓" : "Kopier notat"}
-    </button>
+    </Button>
   );
 }
 
@@ -41,29 +35,19 @@ export function DeleteButton({ callId }: { callId: string }) {
   if (confirming) {
     return (
       <span className="flex items-center gap-2">
-        <button
-          onClick={destroy}
-          disabled={deleting}
-          className="rounded-lg bg-danger px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-85 disabled:opacity-50"
-        >
+        <Button onClick={destroy} disabled={deleting} variant="danger" size="sm">
           {deleting ? "Sletter…" : "Ja, slett permanent"}
-        </button>
-        <button
-          onClick={() => setConfirming(false)}
-          className="rounded-lg px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
-        >
+        </Button>
+        <Button onClick={() => setConfirming(false)} variant="ghost" size="sm">
           Avbryt
-        </button>
+        </Button>
       </span>
     );
   }
 
   return (
-    <button
-      onClick={() => setConfirming(true)}
-      className="rounded-lg px-3 py-1.5 text-sm text-danger transition-colors hover:bg-danger-soft"
-    >
+    <Button onClick={() => setConfirming(true)} variant="dangerGhost" size="sm">
       Slett samtale
-    </button>
+    </Button>
   );
 }

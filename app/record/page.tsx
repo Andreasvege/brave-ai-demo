@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import { MicIcon, CheckIcon } from "@/components/icons";
 
 type Phase = "idle" | "recording" | "processing" | "done" | "error";
 type PipelineStep = "TRANSCRIBING" | "ANALYZING" | "DONE";
@@ -124,7 +127,7 @@ export default function RecordPage() {
         Kun din mikrofon tas opp — motparten havner aldri i opptaket.
       </p>
 
-      <div className="card mt-8 flex flex-col items-center px-8 py-12">
+      <Card className="mt-8 flex flex-col items-center px-8 py-12">
         {phase === "processing" || phase === "done" ? (
           <PipelineStatus step={step} />
         ) : (
@@ -141,7 +144,7 @@ export default function RecordPage() {
               {phase === "recording" ? (
                 <span className="block h-7 w-7 rounded-[5px] bg-white" />
               ) : (
-                <MicIcon />
+                <MicIcon width={30} height={30} strokeWidth="1.6" />
               )}
             </button>
 
@@ -159,7 +162,7 @@ export default function RecordPage() {
             )}
 
             <div className="mt-8 w-full">
-              <label className="kicker" htmlFor="notes">
+              <label htmlFor="notes" className="kicker block">
                 Notater under samtalen
               </label>
               <textarea
@@ -187,7 +190,7 @@ export default function RecordPage() {
             )}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -204,16 +207,12 @@ function PipelineStatus({ step }: { step: PipelineStep }) {
     <div className="flex w-full max-w-xs flex-col gap-4 py-6" aria-live="polite">
       {steps.map((s, i) => (
         <div key={s.key} className="flex items-center gap-3">
-          {i < idx ? (
+          {i < idx || (i === idx && s.key === "DONE") ? (
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-soft text-green-ink">
               <CheckIcon />
             </span>
-          ) : i === idx && s.key !== "DONE" ? (
-            <span className="spinner" />
           ) : i === idx ? (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-soft text-green-ink">
-              <CheckIcon />
-            </span>
+            <Spinner />
           ) : (
             <span className="h-5 w-5 rounded-full border border-border" />
           )}
@@ -228,22 +227,5 @@ function PipelineStatus({ step }: { step: PipelineStep }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function MicIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 10a7 7 0 0 0 14 0M12 17v5" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

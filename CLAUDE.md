@@ -28,6 +28,11 @@ Transkribering og AI-analyse av cold calls. Spesifikasjonen er DEMO-SCOPE-seksjo
 
 ## Konvensjoner
 - Alt UI på norsk; lys Linear-estetikk, designtokens i `app/globals.css`, aksent #22cde1
+- Gjenbrukbare UI-komponenter (shadcn-mønster med cva + `cn()` fra `lib/utils.ts`):
+  primitives i `components/ui/` (Button/buttonVariants, Badge, Card/CardAccentHeader/
+  CardContent/Kicker, Spinner), domenekomponenter i `components/` (call-badges, icons).
+  Ny UI skal bygges av disse — ikke inline Tailwind-knapper/kort i sidene.
+  Lenker stylet som knapper bruker `buttonVariants()` på `<Link>`/`<a>`
 - Bevisst UTE av demoen: auth, ekte CRM/kalender-API, sanntid, multi-bruker
 
 ## Test

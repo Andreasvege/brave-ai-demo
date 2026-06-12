@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import type { Analysis } from "@/lib/analyze";
-import { OutcomeBadge, StatusBadge, formatDuration, formatDate } from "../../ui/badges";
+import { formatDuration, formatDate } from "@/lib/format";
+import { Card, CardAccentHeader, CardContent, Kicker } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { OutcomeBadge, StatusBadge } from "@/components/call-badges";
 import { CopyButton, DeleteButton } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -65,23 +69,23 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
       </div>
 
       {call.status === "FAILED" && (
-        <div className="card mb-6 border-danger-soft bg-danger-soft px-5 py-4 text-sm text-danger">
+        <Card className="mb-6 border-danger-soft bg-danger-soft px-5 py-4 text-sm text-danger">
           Pipeline feilet: {call.error}
-        </div>
+        </Card>
       )}
 
       {!analysis && call.status !== "FAILED" && (
-        <div className="card px-5 py-10 text-center text-sm text-ink-soft">
+        <Card className="px-5 py-10 text-center text-sm text-ink-soft">
           Analysen er ikke klar ennå. Oppdater siden om litt.
-        </div>
+        </Card>
       )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-5">
           {analysis && (
             <>
-              <section className="card fade-up px-6 py-5">
-                <h2 className="kicker">Oppsummering</h2>
+              <Card className="fade-up px-6 py-5">
+                <Kicker>Oppsummering</Kicker>
                 <p className="mt-2.5 text-[15px] leading-relaxed">{analysis.summary}</p>
                 {analysis.inferred_prospect_context && (
                   <p className="mt-3 border-l-2 border-accent-border pl-3 text-sm leading-relaxed text-ink-soft">
@@ -91,7 +95,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                 )}
                 {analysis.next_steps.length > 0 && (
                   <>
-                    <h3 className="kicker mt-5">Neste steg</h3>
+                    <Kicker className="mt-5">Neste steg</Kicker>
                     <ul className="mt-2 flex flex-col gap-1.5">
                       {analysis.next_steps.map((s, i) => (
                         <li key={i} className="flex gap-2.5 text-sm leading-relaxed">
@@ -102,11 +106,11 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                     </ul>
                   </>
                 )}
-              </section>
+              </Card>
 
               {analysis.sales_tips.length > 0 && (
-                <section className="card fade-up px-6 py-5" style={{ animationDelay: "60ms" }}>
-                  <h2 className="kicker">Salgstips</h2>
+                <Card className="fade-up px-6 py-5" style={{ animationDelay: "60ms" }}>
+                  <Kicker>Salgstips</Kicker>
                   <ul className="mt-3 flex flex-col gap-4">
                     {analysis.sales_tips.map((t, i) => (
                       <li key={i}>
@@ -119,24 +123,22 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                       </li>
                     ))}
                   </ul>
-                </section>
+                </Card>
               )}
 
               {analysis.objections.length > 0 && (
-                <section className="card fade-up px-6 py-5" style={{ animationDelay: "120ms" }}>
-                  <h2 className="kicker">Innvendinger</h2>
+                <Card className="fade-up px-6 py-5" style={{ animationDelay: "120ms" }}>
+                  <Kicker>Innvendinger</Kicker>
                   <ul className="mt-3 flex flex-col gap-3">
                     {analysis.objections.map((o, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm leading-relaxed">
-                        <span
-                          className={`mt-0.5 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                            o.handled_well
-                              ? "bg-green-soft text-green-ink"
-                              : "bg-amber-soft text-amber-ink"
-                          }`}
+                        <Badge
+                          tone={o.handled_well ? "green" : "amber"}
+                          size="sm"
+                          className="mt-0.5 shrink-0"
                         >
                           {o.handled_well ? "Godt håndtert" : "Kan forbedres"}
-                        </span>
+                        </Badge>
                         <span>
                           {o.objection}
                           {o.inferred && (
@@ -146,7 +148,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                       </li>
                     ))}
                   </ul>
-                </section>
+                </Card>
               )}
             </>
           )}
@@ -154,7 +156,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
           {call.transcript && (
             <details className="card fade-up group px-6 py-5" style={{ animationDelay: "180ms" }}>
               <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
-                <h2 className="kicker">Transkript (kun din side)</h2>
+                <Kicker>Transkript (kun din side)</Kicker>
                 <span className="text-xs text-ink-faint transition-transform group-open:rotate-180">▾</span>
               </summary>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-soft">
@@ -164,22 +166,20 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
           )}
 
           {call.notes && (
-            <section className="card fade-up px-6 py-5" style={{ animationDelay: "240ms" }}>
-              <h2 className="kicker">Dine notater</h2>
+            <Card className="fade-up px-6 py-5" style={{ animationDelay: "240ms" }}>
+              <Kicker>Dine notater</Kicker>
               <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">
                 {call.notes}
               </p>
-            </section>
+            </Card>
           )}
         </div>
 
         <div className="flex flex-col gap-5">
           {crm && (
-            <section className="card fade-up overflow-hidden" style={{ animationDelay: "90ms" }}>
-              <div className="border-b border-accent-border bg-accent-soft px-6 py-3">
-                <h2 className="text-[13px] font-semibold text-accent-ink">Forslag til CRM-oppdatering</h2>
-              </div>
-              <div className="px-6 py-5">
+            <Card className="fade-up overflow-hidden" style={{ animationDelay: "90ms" }}>
+              <CardAccentHeader>Forslag til CRM-oppdatering</CardAccentHeader>
+              <CardContent>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                   <dt className="text-ink-faint">Firma</dt>
                   <dd className="font-medium">{crm.company ?? "–"}</dd>
@@ -194,16 +194,14 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                 <div className="mt-4">
                   <CopyButton text={crmText} />
                 </div>
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           )}
 
           {meeting?.should_book && (
-            <section className="card fade-up overflow-hidden" style={{ animationDelay: "150ms" }}>
-              <div className="border-b border-accent-border bg-accent-soft px-6 py-3">
-                <h2 className="text-[13px] font-semibold text-accent-ink">Forslag til møte</h2>
-              </div>
-              <div className="px-6 py-5">
+            <Card className="fade-up overflow-hidden" style={{ animationDelay: "150ms" }}>
+              <CardAccentHeader>Forslag til møte</CardAccentHeader>
+              <CardContent>
                 <p className="text-sm font-medium">{meeting.proposed_title ?? "Oppfølgingsmøte"}</p>
                 <p className="mt-1 text-sm text-ink-soft">
                   {meeting.proposed_duration_minutes ?? 30} minutter
@@ -215,12 +213,12 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                   href={calendarUrl(meeting)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                  className={`mt-4 ${buttonVariants({ size: "sm" })}`}
                 >
                   Åpne i Google Calendar ↗
                 </a>
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           )}
 
           <div className="fade-up flex justify-end" style={{ animationDelay: "210ms" }}>

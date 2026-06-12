@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import BraveLogo from "./bravelogo";
+import { buttonVariants } from "@/components/ui/button";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,13 +42,13 @@ export default function RootLayout({
             <nav className="flex items-center gap-1 text-sm">
               <Link
                 href="/"
-                className="rounded-lg px-3 py-1.5 text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 Samtaler
               </Link>
               <Link
                 href="/record"
-                className="ml-2 rounded-lg bg-ink px-3.5 py-1.5 font-medium text-white transition-opacity hover:opacity-85"
+                className={`ml-2 ${buttonVariants({ variant: "primary", size: "sm" })}`}
               >
                 Nytt opptak
               </Link>
