@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
-import BraveLogo from "./bravelogo";
 import { buttonVariants } from "@/components/ui/button";
 import "./globals.css";
 
@@ -35,11 +35,14 @@ export default function RootLayout({
           <div className="brand-stripe" />
           <div className="border-b border-border">
             <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
-              <Link href="/" className="flex items-center gap-2.5 text-ink">
-                <BraveLogo className="h-5 w-auto" />
-                <span className="mt-0.5 text-[13px] font-medium tracking-wide text-ink-soft">
-                  CallAI
-                </span>
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/BraveAILogo.png"
+                  alt="Brave AI"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
               </Link>
               <nav className="flex items-center gap-1 text-sm">
                 <Link
