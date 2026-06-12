@@ -10,20 +10,24 @@ Transkribering og AI-analyse av cold calls. Spesifikasjonen er DEMO-SCOPE-seksjo
 - Prisma 6 + SQLite (`prisma/dev.db`) — **ikke** oppgrader til Prisma 7 (krever adapter-oppsett,
   `url` i schema er fjernet). SQLite-connectoren støtter ikke enum/Json, derfor er
   `Call.status` og `Call.analysis` strenger (analyse = JSON-streng, parses med `JSON.parse`)
-- Azure Speech fast transcription: westeurope, api-version **2025-10-15**, locale nb-NO (`lib/transcribe.ts`)
+- Azure Speech, westeurope, nb-NO — to veier:
+  - **Live**: `microsoft-cognitiveservices-speech-sdk` i nettleseren (lastes dynamisk i
+    `/record`), token fra `POST /api/speech-token` (10 min levetid, nøkkel forblir på server)
+  - **Batch** (filopplasting/curl): fast transcription, api-version **2025-10-15** (`lib/transcribe.ts`)
 - Claude `claude-sonnet-4-5` for analyse (`lib/analyze.ts`) — prompten får transkript OG
   konsulentens notater som to adskilte seksjoner (transkriptet er én-sidet, notatene
   beskriver motparten)
 - Nøkler i `.env.local`: AZURE_SPEECH_KEY/REGION, ANTHROPIC_API_KEY
 
 ## Arkitektur
-- `POST /api/calls` kjører hele pipelinen **synkront**: multipart (audio, notes, durationSec)
-  → transkriber → analyser → SQLite → returnerer analyse-JSON. Status skrives til DB underveis
-  (TRANSCRIBING → ANALYZING → DONE/FAILED); `/record`-siden poller liste-endepunktet for
-  statusvisning mens POST-en pågår
+- `POST /api/calls` kjører pipelinen **synkront** og tar multipart med ENTEN `transcript`
+  (tekst fra live-transkribering → rett til analyse) ELLER `audio` (fil → Azure batch →
+  analyse), pluss notes/durationSec. Returnerer analyse-JSON. Status skrives til DB underveis
+  (TRANSCRIBING → ANALYZING → DONE/FAILED); `/record` poller liste-endepunktet for
+  statusvisning på batch-veien
 - `GET/DELETE /api/calls/[id]` — detalj og hard delete
-- Sider: `/` (liste), `/record` (opptak: kun mikrofon, aldri systemlyd — GDPR),
-  `/calls/[id]` (analyse-kort, CRM-kopi, Google Calendar-lenke)
+- Sider: `/` (liste), `/record` (live-transkribering med interim-visning, kun mikrofon,
+  aldri systemlyd — GDPR), `/calls/[id]` (analyse-kort, CRM-kopi, Google Calendar-lenke)
 - Lydfiler lagres aldri — transkriberes direkte fra upload
 
 ## Konvensjoner
@@ -33,7 +37,7 @@ Transkribering og AI-analyse av cold calls. Spesifikasjonen er DEMO-SCOPE-seksjo
   CardContent/Kicker, Spinner), domenekomponenter i `components/` (call-badges, icons).
   Ny UI skal bygges av disse — ikke inline Tailwind-knapper/kort i sidene.
   Lenker stylet som knapper bruker `buttonVariants()` på `<Link>`/`<a>`
-- Bevisst UTE av demoen: auth, ekte CRM/kalender-API, sanntid, multi-bruker
+- Bevisst UTE av demoen: auth, ekte CRM/kalender-API, multi-bruker
 
 ## Test
 Dev-server + ende-til-ende:

@@ -4,16 +4,22 @@ import { analyzeTranscript } from "@/lib/analyze";
 
 export const maxDuration = 300;
 
-// Full pipeline synkront: opptak → transkribering → analyse → DONE.
-// Klienten poller GET /api/calls/[id] for statusvisning mens kallet pågår.
+// To veier inn, begge synkrone:
+//  - transcript (tekst): fra live-transkribering i nettleseren → rett til analyse
+//  - audio (fil): batch-veien → Azure fast transcription → analyse
+// Klienten poller GET /api/calls for statusvisning mens kallet pågår.
 export async function POST(request: Request) {
   const formData = await request.formData();
   const audio = formData.get("audio");
+  const liveTranscript = (formData.get("transcript") as string | null)?.trim() || null;
   const notes = (formData.get("notes") as string | null)?.trim() || null;
   const clientDuration = Number(formData.get("durationSec")) || null;
 
-  if (!(audio instanceof File)) {
-    return Response.json({ error: "Mangler lydfil (felt: audio)" }, { status: 400 });
+  if (!(audio instanceof File) && !liveTranscript) {
+    return Response.json(
+      { error: "Mangler lydfil (felt: audio) eller transkript (felt: transcript)" },
+      { status: 400 }
+    );
   }
 
   const call = await prisma.call.create({
@@ -21,23 +27,33 @@ export async function POST(request: Request) {
   });
 
   try {
-    await prisma.call.update({
-      where: { id: call.id },
-      data: { status: "TRANSCRIBING" },
-    });
-    const { transcript, durationSec } = await transcribeAudio(
-      audio,
-      audio.name || "opptak.webm"
-    );
+    let transcript: string;
+
+    if (liveTranscript) {
+      transcript = liveTranscript;
+    } else {
+      await prisma.call.update({
+        where: { id: call.id },
+        data: { status: "TRANSCRIBING" },
+      });
+      const result = await transcribeAudio(
+        audio as File,
+        (audio as File).name || "opptak.webm"
+      );
+      transcript = result.transcript;
+      if (clientDuration == null && result.durationSec != null) {
+        await prisma.call.update({
+          where: { id: call.id },
+          data: { durationSec: result.durationSec },
+        });
+      }
+    }
+
     if (!transcript) throw new Error("Transkriptet ble tomt — ingen tale gjenkjent");
 
     await prisma.call.update({
       where: { id: call.id },
-      data: {
-        status: "ANALYZING",
-        transcript,
-        durationSec: clientDuration ?? durationSec,
-      },
+      data: { status: "ANALYZING", transcript },
     });
 
     const analysis = await analyzeTranscript(transcript, notes);
