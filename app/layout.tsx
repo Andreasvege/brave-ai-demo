@@ -31,28 +31,31 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <header className="sticky top-0 z-10 border-b border-border bg-bg/85 backdrop-blur-sm">
-          <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
-            <Link href="/" className="flex items-center gap-2.5 text-ink">
-              <BraveLogo className="h-5 w-auto" />
-              <span className="mt-0.5 text-[13px] font-medium tracking-wide text-ink-soft">
-                CallAI
-              </span>
-            </Link>
-            <nav className="flex items-center gap-1 text-sm">
-              <Link
-                href="/"
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Samtaler
+        <header className="sticky top-0 z-10 bg-bg/85 backdrop-blur-sm">
+          <div className="brand-stripe" />
+          <div className="border-b border-border">
+            <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
+              <Link href="/" className="flex items-center gap-2.5 text-ink">
+                <BraveLogo className="h-5 w-auto" />
+                <span className="mt-0.5 text-[13px] font-medium tracking-wide text-ink-soft">
+                  CallAI
+                </span>
               </Link>
-              <Link
-                href="/record"
-                className={`ml-2 ${buttonVariants({ variant: "primary", size: "sm" })}`}
-              >
-                Nytt opptak
-              </Link>
-            </nav>
+              <nav className="flex items-center gap-1 text-sm">
+                <Link
+                  href="/"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  Samtaler
+                </Link>
+                <Link
+                  href="/record"
+                  className={`ml-2 ${buttonVariants({ variant: "accent", size: "sm" })}`}
+                >
+                  Nytt opptak
+                </Link>
+              </nav>
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">

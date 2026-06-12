@@ -8,16 +8,20 @@
   --ink: #1d1c19;
   --ink-soft: #6e6a61;
   --ink-faint: #a39f94;
-  --accent: #22cde1;
-  --accent-ink: #0c7d8f;
-  --accent-soft: #e9fafc;
-  --accent-border: #bdeef5;
-  --danger: #b3434f;
-  --danger-soft: #fbeef0;
-  --amber-ink: #92600a;
-  --amber-soft: #fdf3e1;
-  --green-ink: #2f7d4f;
-  --green-soft: #e9f6ee;
+
+  /* Skogsgrønn aksent */
+  --accent: #3a5c28;
+  --accent-ink: #1a3a0c;
+  --accent-soft: #ebf5e2;
+  --accent-border: #afd490;
+
+  /* Innholdsfarger — rene og mettede for badges */
+  --danger: #9f1239;
+  --danger-soft: #ffe4e6;
+  --amber-ink: #78350f;
+  --amber-soft: #fef3c7;
+  --green-ink: #14532d;
+  --green-soft: #dcfce7;
 }
 
 @theme inline {
@@ -70,6 +74,17 @@ body {
   box-shadow: 0 1px 2px rgb(29 28 25 / 0.03);
 }
 
+/* Tynn merkevare-stripe øverst på siden */
+.brand-stripe {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--accent),
+    #5a8c3a 40%,
+    var(--accent-border)
+  );
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -87,10 +102,10 @@ body {
 
 @keyframes rec-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgb(34 205 225 / 0.45);
+    box-shadow: 0 0 0 0 rgb(58 92 40 / 0.4);
   }
   100% {
-    box-shadow: 0 0 0 26px rgb(34 205 225 / 0);
+    box-shadow: 0 0 0 26px rgb(58 92 40 / 0);
   }
 }
 
