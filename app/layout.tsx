@@ -37,11 +37,11 @@ export default function RootLayout({
             <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
               <Link href="/" className="flex items-center gap-2">
                 <Image
-                  src="/BraveAILogo.png"
+                  src="/BraveAIFull1.png"
                   alt="Brave AI"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 object-contain"
+                  width={120}
+                  height={33}
+                  className="h-8 w-auto object-contain"
                 />
               </Link>
               <nav className="flex items-center gap-1 text-sm">
