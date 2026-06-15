@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.104.1",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/client": "^6.19.3",
+    "@vercel/blob": "^2.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "microsoft-cognitiveservices-speech-sdk": "^1.50.0",

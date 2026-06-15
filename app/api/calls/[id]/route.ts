@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 
 export async function GET(
@@ -28,6 +29,8 @@ export async function DELETE(
   ctx: RouteContext<"/api/calls/[id]">
 ) {
   const { id } = await ctx.params;
+  const call = await prisma.call.findUnique({ where: { id }, select: { audioUrl: true } });
   await prisma.call.delete({ where: { id } }).catch(() => null);
+  if (call?.audioUrl) await del(call.audioUrl, { token: process.env.BLOB_READ_WRITE_TOKEN }).catch(() => null);
   return Response.json({ ok: true });
 }

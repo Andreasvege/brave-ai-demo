@@ -11,5 +11,6 @@ export function formatDate(d: Date): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Oslo",
   }).format(d);
 }

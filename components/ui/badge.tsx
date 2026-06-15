@@ -10,7 +10,7 @@ export const badgeVariants = cva(
         green: "bg-green-soft text-green-ink",
         amber: "bg-amber-soft text-amber-ink",
         danger: "bg-danger-soft text-danger",
-        neutral: "bg-bg text-ink-soft",
+        neutral: "bg-white text-ink-soft",
         faint: "bg-bg text-ink-faint",
       },
       size: {

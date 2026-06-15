@@ -68,7 +68,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
           <StatusBadge status={call.status} />
         )}
         {call.transcribeMode && (
-          <Badge tone="neutral" size="sm">
+          <Badge tone="neutral" size="lg">
             {call.transcribeMode === "live"
               ? "Live"
               : call.transcribeMode === "batch"
@@ -188,6 +188,20 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
                 {analysis?.transcriptV2}
               </p>
             </details>
+          )}
+
+          {call.audioUrl && (
+            <Card className="fade-up px-6 py-5" style={{ animationDelay: "220ms" }}>
+              <Kicker>Lydopptak</Kicker>
+              <audio controls src={`/api/calls/${call.id}/audio`} className="mt-3 w-full" />
+              <a
+                href={`/api/calls/${call.id}/audio`}
+                download
+                className={`mt-3 inline-block ${buttonVariants({ variant: "ghost", size: "sm" })}`}
+              >
+                Last ned lydfil ↓
+              </a>
+            </Card>
           )}
 
           {call.notes && (

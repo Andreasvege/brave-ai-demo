@@ -1,3 +1,4 @@
+import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { transcribeAudio } from "@/lib/transcribe";
 import { analyzeTranscript } from "@/lib/analyze";
@@ -33,14 +34,19 @@ export async function POST(request: Request) {
     if (liveTranscript) {
       transcript = liveTranscript;
     } else {
-      await prisma.call.update({
-        where: { id: call.id },
-        data: { status: "TRANSCRIBING" },
-      });
-      const result = await transcribeAudio(
-        audio as File,
-        (audio as File).name || "opptak.webm"
-      );
+      const audioFile = audio as File;
+      const rawExt = (audioFile.name || "opptak.webm").split(".").pop() ?? "webm";
+      const safeExt = rawExt.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "webm";
+      const filename = `calls/${call.id}/audio.${safeExt}`;
+
+      const [blob] = await Promise.all([
+        put(filename, audioFile, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN }),
+        prisma.call.update({ where: { id: call.id }, data: { status: "TRANSCRIBING" } }),
+      ]);
+
+      await prisma.call.update({ where: { id: call.id }, data: { audioUrl: blob.url } });
+
+      const result = await transcribeAudio(audioFile, audioFile.name || "opptak.webm");
       transcript = result.transcript;
       if (clientDuration == null && result.durationSec != null) {
         await prisma.call.update({
@@ -67,6 +73,7 @@ export async function POST(request: Request) {
     return Response.json(done);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error("[POST /api/calls] Pipeline feilet:", err);
     await prisma.call.update({
       where: { id: call.id },
       data: { status: "FAILED", error: message },
