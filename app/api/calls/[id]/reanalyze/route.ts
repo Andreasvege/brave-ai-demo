@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { analyzeTranscript } from "@/lib/analyze";
 
+export const maxDuration = 300;
+
 export async function POST(
   req: Request,
   ctx: RouteContext<"/api/calls/[id]/reanalyze">
@@ -18,12 +20,12 @@ export async function POST(
     const analysis = await analyzeTranscript(call.transcript, call.notes ?? null, extraContext);
     const updated = await prisma.call.update({
       where: { id },
-      data: { status: "DONE", analysis: JSON.stringify(analysis) },
+      data: { status: "DONE", analysis },
     });
-    return Response.json({ ...updated, analysis });
+    return Response.json(updated);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await prisma.call.update({ where: { id }, data: { status: "DONE" } });
+    await prisma.call.update({ where: { id }, data: { status: "FAILED", error: message } });
     return Response.json({ error: message }, { status: 500 });
   }
 }

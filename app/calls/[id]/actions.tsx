@@ -63,6 +63,7 @@ export function EditableTitle({
       {title}
     </h1>
   );
+  
 }
 
 export function CopyButton({ text }: { text: string }) {

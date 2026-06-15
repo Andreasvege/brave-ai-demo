@@ -32,7 +32,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
   const call = await prisma.call.findUnique({ where: { id } });
   if (!call) notFound();
 
-  const analysis: Analysis | null = call.analysis ? JSON.parse(call.analysis) : null;
+  const analysis = call.analysis as Analysis | null;
   const crm = analysis?.suggested_crm_update;
   const meeting = analysis?.suggested_meeting;
 
@@ -60,10 +60,21 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
           initialTitle={call.title ?? null}
           fallback={crm?.company || crm?.contact_name || "Samtale"}
         />
+          <Badge size="lg" tone="green">V1 Score: {analysis?.transcriptionScoreV1}</Badge>
+          <Badge size="lg" tone="green">V2 Score: {analysis?.transcriptionScoreV2}</Badge>
         {call.status === "DONE" && analysis ? (
           <OutcomeBadge outcome={analysis.outcome} />
         ) : (
           <StatusBadge status={call.status} />
+        )}
+        {call.transcribeMode && (
+          <Badge tone="neutral" size="sm">
+            {call.transcribeMode === "live"
+              ? "Live"
+              : call.transcribeMode === "batch"
+                ? "Batch"
+                : "Filopplasting"}
+          </Badge>
         )}
         <span className="ml-auto text-sm text-ink-faint">
           {formatDate(call.createdAt)} · {formatDuration(call.durationSec)} min
@@ -163,6 +174,18 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
               </summary>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-soft">
                 {call.transcript}
+              </p>
+            </details>
+          )}
+
+          {analysis?.transcriptV2 && (
+            <details className="card fade-up group px-6 py-5" style={{ animationDelay: "180ms" }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+                <Kicker>TranskriptV2 (kun din side)</Kicker>
+                <span className="text-xs text-ink-faint transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-soft">
+                {analysis?.transcriptV2}
               </p>
             </details>
           )}

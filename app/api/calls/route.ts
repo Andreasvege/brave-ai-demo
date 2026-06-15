@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   const liveTranscript = (formData.get("transcript") as string | null)?.trim() || null;
   const notes = (formData.get("notes") as string | null)?.trim() || null;
   const clientDuration = Number(formData.get("durationSec")) || null;
+  const transcribeMode = (formData.get("transcribeMode") as string | null) || null;
 
   if (!(audio instanceof File) && !liveTranscript) {
     return Response.json(
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const call = await prisma.call.create({
-    data: { status: "RECORDED", notes, durationSec: clientDuration },
+    data: { status: "RECORDED", notes, durationSec: clientDuration, transcribeMode },
   });
 
   try {
@@ -60,10 +61,10 @@ export async function POST(request: Request) {
 
     const done = await prisma.call.update({
       where: { id: call.id },
-      data: { status: "DONE", analysis: JSON.stringify(analysis) },
+      data: { status: "DONE", analysis },
     });
 
-    return Response.json({ ...done, analysis });
+    return Response.json(done);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await prisma.call.update({

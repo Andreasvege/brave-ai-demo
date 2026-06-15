@@ -24,7 +24,7 @@ const BATCH_STEPS: Step[] = [
 
 export default function RecordPage() {
   const router = useRouter();
-  const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("live");
+  const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("batch");
   const [phase, setPhase] = useState<Phase>("idle");
   const [steps, setSteps] = useState<Step[]>(LIVE_STEPS);
   const [stepKey, setStepKey] = useState("ANALYZING");
@@ -186,7 +186,7 @@ export default function RecordPage() {
 
     mediaRecorder.current = null;
     const file = new File([blob], "opptak.webm", { type: blob.type });
-    await submitFile(file, seconds);
+    await submitFile(file, seconds, "batch");
   }
 
   async function abortRecording() {
@@ -226,6 +226,7 @@ export default function RecordPage() {
     try {
       const formData = new FormData();
       formData.append("transcript", transcript);
+      formData.append("transcribeMode", "live");
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
       await postAndNavigate(formData);
@@ -235,7 +236,7 @@ export default function RecordPage() {
     }
   }
 
-  async function submitFile(file: File, durationSec?: number) {
+  async function submitFile(file: File, durationSec?: number, mode: "batch" | "file" = "batch") {
     setPhase("processing");
     setSteps(BATCH_STEPS);
     setStepKey("TRANSCRIBING");
@@ -257,6 +258,7 @@ export default function RecordPage() {
     try {
       const formData = new FormData();
       formData.append("audio", file, file.name);
+      formData.append("transcribeMode", mode);
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
       await postAndNavigate(formData);
@@ -280,7 +282,7 @@ export default function RecordPage() {
 
   function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) submitFile(file);
+    if (file) submitFile(file, undefined, "file");
     e.target.value = "";
   }
 
@@ -291,7 +293,7 @@ export default function RecordPage() {
 
   return (
     <div className="fade-up mx-auto max-w-xl">
-      <h1 className="text-2xl font-semibold tracking-tight">Nytt opptak</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Nytt opptak - Lykke til King 👑</h1>
       <p className="mt-1 text-sm text-ink-soft">
         Kun din mikrofon tas opp — motparten havner aldri i opptaket.
       </p>
@@ -307,7 +309,7 @@ export default function RecordPage() {
               aria-label="Transkripsjonsmodus"
               className="flex w-full max-w-xs rounded-xl border border-border bg-bg p-1"
             >
-              {(["live", "batch"] as TranscribeMode[]).map((m) => (
+              {(["batch", "live"] as TranscribeMode[]).map((m) => (
                 <button
                   key={m}
                   type="button"

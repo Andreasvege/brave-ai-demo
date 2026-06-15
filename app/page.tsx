@@ -15,11 +15,12 @@ export default async function CallListPage() {
     <div className="fade-up">
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Samtaler</h1>
+          <h1 className="text-4xl font-semibold tracking-tight mb-4">Velkommen, Mr. Skibbedi-Rizzler</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">Samtaler</h2>
           <p className="mt-1 text-sm text-ink-soft">
             {calls.length === 0
               ? "Ingen samtaler ennå"
-              : `${calls.length} ${calls.length === 1 ? "samtale" : "samtaler"} analysert`}
+              : `${calls.length} ${calls.length === 1 ? "samtale" : "samtaler"} fra Markus "The Goat" Johannessen analysert`}
           </p>
         </div>
       </div>
@@ -43,7 +44,7 @@ export default async function CallListPage() {
         <Card className="overflow-hidden">
           <ul className="divide-y divide-border">
             {calls.map((call, i) => {
-              const analysis = call.analysis ? JSON.parse(call.analysis) : null;
+              const analysis = call.analysis as import("@/lib/analyze").Analysis | null;
               return (
                 <li key={call.id} className="fade-up" style={{ animationDelay: `${i * 40}ms` }}>
                   <Link

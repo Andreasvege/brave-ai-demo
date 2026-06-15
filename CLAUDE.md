@@ -1,9 +1,15 @@
 @AGENTS.md
 
-# Brave CallAI — demo
+# Brave CallAI
 
-Transkribering og AI-analyse av cold calls. Spesifikasjonen er DEMO-SCOPE-seksjonen
-øverst i `brave-callai-mvp-guide.md` (den overstyrer resten av dokumentet).
+Transkribering og AI-analyse av cold calls. Dette er ikke lenger en demo — det er
+grunnlaget for et reelt produkt. Første målgruppe er selgerne i Brave, men arkitektur
+og beslutninger skal tas med tanke på at produktet skal kunne selges eksternt.
+Større API- og skjemaendringer er ønskelige når de gir bedre fundament.
+
+Spesifikasjonen er DEMO-SCOPE-seksjonen øverst i `brave-callai-mvp-guide.md`
+(den overstyrer resten av dokumentet) — men produktambisjonen overstyrer demo-begrensninger
+der de er i konflikt.
 
 ## Stack
 - Next.js 16 (App Router, Turbopack) — les `node_modules/next/dist/docs/` ved tvil, se AGENTS.md
@@ -45,13 +51,22 @@ Transkribering og AI-analyse av cold calls. Spesifikasjonen er DEMO-SCOPE-seksjo
   CardContent/Kicker, Spinner), domenekomponenter i `components/` (call-badges, icons).
   Ny UI skal bygges av disse — ikke inline Tailwind-knapper/kort i sidene.
   Lenker stylet som knapper bruker `buttonVariants()` på `<Link>`/`<a>`
-- Bevisst UTE av demoen: ekte CRM/kalender-API
+- CRM/kalender-API er ikke koblet til ennå, men arkitekturen skal gjøre det mulig
 - **Auth**: NextAuth.js v5 med Google OAuth. Kun `@brave.no`-adresser slipper inn
   (callback i `auth.ts`). Middleware beskytter alle ruter inkl. API-et.
 - **Delt tilgang**: Alle innloggede brukere ser og redigerer alle samtaler — ingen
-  per-bruker-eierskap. Dette er bevisst design (teamverktøy). IDOR-flagging fra
-  sikkerhetsverktøy er derfor ikke relevant her. Hvis appen utvides til flere team
-  må `userId` legges på `Call`-modellen.
+  per-bruker-eierskap. Dette er bevisst design (teamverktøy for Brave). Når produktet
+  selges eksternt må `userId`/`teamId` legges på `Call`-modellen og tilgangsstyring
+  implementeres. IDOR-flagging er ikke relevant innenfor ett team.
+
+## Planlagte DB-endringer (ikke gjort ennå)
+Neste større migrering skal inkludere:
+- `analysis String?` → `analysis Json?` (JSONB i Postgres via Neon) — slipper `JSON.parse`/`JSON.stringify`, muliggjør DB-spørringer inn i JSON
+- `outcome String?` som egen kolonne (utledet fra analyse) — for filtrering i liste
+- `transcriptionScore Int?` som egen kolonne — for kvalitetssporing over tid
+- `userId String?` — hvem som opprettet samtalen (eierskap, filtrering)
+- `audioUrl String?` — URL til lydfil i Vercel Blob (midlertidig lagring for transkripsjonskvalitetssjekk)
+- Eventuelt flere felt etter videre avklaring — ikke migrer før alle ønskede endringer er klare
 
 ## Prompt-tuning
 Analysen styres av to konstanter i `lib/analyze.ts`:

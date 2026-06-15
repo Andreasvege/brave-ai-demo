@@ -8,15 +8,22 @@ datasource db {
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
-// status er en av RECORDED | TRANSCRIBING | ANALYZING | DONE | FAILED, analysis er JSON-streng.
+// status: RECORDED | TRANSCRIBING | ANALYZING | DONE | FAILED
+// analysis er JSONB — parses ikke manuelt, Prisma returnerer det som objekt
+// teamId/userId: brukes for multi-tenant når produktet selges eksternt
 model Call {
-  id          String   @id @default(cuid())
-  title       String?
-  status      String   @default("RECORDED")
-  durationSec Int?
-  notes       String?
-  transcript  String?
-  analysis    String?
-  error       String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  title          String?
+  status         String   @default("RECORDED")
+  transcribeMode String?
+  outcome        String?
+  userId         String?
+  teamId         String?
+  audioUrl       String?
+  durationSec    Int?
+  notes          String?
+  transcript     String?
+  analysis       Json?
+  error          String?
+  createdAt      DateTime @default(now())
 }
