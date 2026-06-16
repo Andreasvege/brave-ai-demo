@@ -9,10 +9,13 @@ export async function uploadAudio(
   onProgress?: (pct: number) => void
 ): Promise<string> {
   const ext = (file.name.split(".").pop() || "webm").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "webm";
+  // MediaRecorder gir ofte "audio/webm;codecs=opus" — strip codec-parameteren til
+  // base-MIME, ellers matcher den ikke allowedContentTypes i /api/calls/upload.
+  const contentType = file.type.split(";")[0].trim() || undefined;
   const blob = await upload(`calls/${crypto.randomUUID()}/audio.${ext}`, file, {
     access: "private",
     handleUploadUrl: "/api/calls/upload",
-    contentType: file.type || undefined,
+    contentType,
     onUploadProgress: onProgress
       ? ({ percentage }) => onProgress(percentage)
       : undefined,
