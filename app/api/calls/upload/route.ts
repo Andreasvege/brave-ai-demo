@@ -34,7 +34,9 @@ export async function POST(request: Request): Promise<Response> {
         // Romslig tak — dekker flere timers opptak. Body-grensen finnes ikke
         // her siden fila går browser → Blob, ikke gjennom funksjonen.
         maximumSizeInBytes: 500 * 1024 * 1024,
-        addRandomSuffix: false,
+        // Tilfeldig suffiks gjør den ferdige stien unik (calls/<id>/audio-<rnd>.<ext>),
+        // så en gyldig token ikke kan treffe og overskrive en annen samtales lyd.
+        addRandomSuffix: true,
         };
       },
       // Ingen onUploadCompleted: pipelinen kjøres synkront i POST /api/calls
