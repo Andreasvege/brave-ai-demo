@@ -1,0 +1,73 @@
+{
+  "audioFile": "lydopptak/testopptak1.m4a",
+  "durationSec": 79.7450625,
+  "reports": [
+    {
+      "name": "Azure",
+      "costPerMinuteUSD": 0.017,
+      "batch": {
+        "transcript": "Hei, det er Andreas som ringer fra brave media her. Ja, snakker jeg med Petter herlig Petter. Jeg ringer for å høre åssen vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter bedrifter som driver med salg, så jeg lurte på hva, hva er det dere selger egentlig? Du jobber i elkjøp? Ja ja, så du selger hvitevarer og teknologi herlig ja, men kult o. k. trenger dere noe hjelp med salg da åssen går det med møtepakken om Dagen. Litt vanskelig? Ja, ja, det syns jeg er vanskelig å interessere spesifikke kunder jeg o. k. ja er du beslutningstaker hos dere eller er det deg jeg kan snakke med for å booke et møte? Ja o. k. ja, men herlig kunne det vært aktuelt da vi tilbyr salgscoaching, og vi tilbyr veiledning og vi tilbyr møtebooking og vi tilbyr prospekting for dere, så vi kan gjerne tilby en hel pakke hvis du har lyst til å ha et møte og snakke om det senere. Herlig så bra o. k., men hva tenker du om? Skal vi se om bare sjekke kalenderen min her? Neste onsdag klokken halv 3. Passer det for deg? Nei o. k. hva med torsdag klokken 02.00? Herlig så bra da sender jeg deg en Google invite nå, og så snakkes vi da ålreit hei.",
+        "durationMs": 3075
+      },
+      "streaming": {
+        "transcript": "Hei, det er Andreas som ringer fra brave media her. Ja snakker jeg med Petter? Herlig Petter. Jeg ringer for å høre hvordan vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter bedrifter som driver med salg, så jeg lurte på hva, hva er det dere selger egentlig? Du jobber i elkjøp, ja så du selger hvitevarer og teknologi herlig ja, men kult OK, trenger du noe hjelp med salg? Hvordan går det med møtebooking om Dagen? Litt vanskelig? Ja. Ja, det synes det er vanskelig å se spesifikke kunder jeg. Ok. Ja er du beslutningstager hos dere, eller er det deg jeg kan snakke med for å booke et møte? Ja. Ok ja, men herlig kunne det vært aktuelt da vi tilbyr salgscoaching, og vi tilbyr veiledning og vi tilbyr møtebooking, og vi tilbyr prospecting for dere. Så vi kan gjerne tilby en hel pakke hvis du har lyst til å ha et møte og snakke om det senere. Herlig så bra ok, men hva tenker du om? Skal vi bare sjekke kalenderen her? Neste onsdag klokken halv 3. Passer det for deg? Nei. Ok, hva med torsdag klokka 02.00? Herlig så bra da sender jeg deg en Google invite nå, og så snakket vi da ålreit hei.",
+        "timeToFirstWordMs": 1881,
+        "totalDurationMs": 81075
+      }
+    },
+    {
+      "name": "AWS Transcribe",
+      "costPerMinuteUSD": 0.024,
+      "batch": {
+        "transcript": "",
+        "durationMs": 0,
+        "error": "AWS_ACCESS_KEY_ID/SECRET/REGION mangler"
+      },
+      "streaming": {
+        "transcript": "",
+        "timeToFirstWordMs": null,
+        "totalDurationMs": 0,
+        "error": "AWS_ACCESS_KEY_ID/SECRET/REGION mangler"
+      }
+    },
+    {
+      "name": "Google Chirp",
+      "costPerMinuteUSD": 0.016,
+      "batch": {
+        "transcript": "",
+        "durationMs": 0,
+        "error": "GOOGLE_APPLICATION_CREDENTIALS mangler"
+      },
+      "streaming": {
+        "transcript": "",
+        "timeToFirstWordMs": null,
+        "totalDurationMs": 0,
+        "error": "GOOGLE_APPLICATION_CREDENTIALS mangler"
+      }
+    },
+    {
+      "name": "OpenAI Whisper",
+      "costPerMinuteUSD": 0.006,
+      "batch": {
+        "transcript": "",
+        "durationMs": 0,
+        "error": "OPENAI_API_KEY mangler"
+      }
+    },
+    {
+      "name": "Deepgram",
+      "costPerMinuteUSD": 0.0059,
+      "batch": {
+        "transcript": "",
+        "durationMs": 0,
+        "error": "DEEPGRAM_API_KEY mangler"
+      },
+      "streaming": {
+        "transcript": "",
+        "timeToFirstWordMs": null,
+        "totalDurationMs": 0,
+        "error": "DEEPGRAM_API_KEY mangler"
+      }
+    }
+  ]
+}

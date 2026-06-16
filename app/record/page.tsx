@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon, CheckIcon } from "@/components/icons";
+import { uploadAudio } from "@/lib/upload-audio";
 
 type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
@@ -17,6 +18,7 @@ const LIVE_STEPS: Step[] = [
   { key: "DONE", label: "Ferdig" },
 ];
 const BATCH_STEPS: Step[] = [
+  { key: "UPLOADING", label: "Laster opp" },
   { key: "TRANSCRIBING", label: "Transkriberer" },
   { key: "ANALYZING", label: "Analyserer" },
   { key: "DONE", label: "Ferdig" },
@@ -46,6 +48,8 @@ export default function RecordPage() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const poller = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptBox = useRef<HTMLDivElement | null>(null);
+  // Beholder siste opptak i minnet så «Prøv igjen» kan sende på nytt uten nytt opptak.
+  const lastFile = useRef<{ file: File; durationSec?: number; mode: "batch" | "file" } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -237,27 +241,35 @@ export default function RecordPage() {
   }
 
   async function submitFile(file: File, durationSec?: number, mode: "batch" | "file" = "batch") {
+    lastFile.current = { file, durationSec, mode };
+    setError(null);
     setPhase("processing");
     setSteps(BATCH_STEPS);
-    setStepKey("TRANSCRIBING");
-    const startedAt = Date.now();
-
-    poller.current = setInterval(async () => {
-      try {
-        const res = await fetch("/api/calls");
-        const calls: { createdAt: string; status: string }[] = await res.json();
-        const current = calls.find(
-          (c) => new Date(c.createdAt).getTime() >= startedAt - 5000
-        );
-        if (current?.status === "ANALYZING") setStepKey("ANALYZING");
-      } catch {
-        // statuspolling er kun kosmetisk
-      }
-    }, 1500);
+    setStepKey("UPLOADING");
 
     try {
+      // 1) Last lyden direkte opp til Vercel Blob — utenom request-body, så
+      //    Vercels ~4,5 MB body-grense rammer ikke lange opptak.
+      const audioUrl = await uploadAudio(file);
+
+      // 2) Start pipelinen med blob-URL-en, og poll for statusvisning.
+      setStepKey("TRANSCRIBING");
+      const startedAt = Date.now();
+      poller.current = setInterval(async () => {
+        try {
+          const res = await fetch("/api/calls");
+          const calls: { createdAt: string; status: string }[] = await res.json();
+          const current = calls.find(
+            (c) => new Date(c.createdAt).getTime() >= startedAt - 5000
+          );
+          if (current?.status === "ANALYZING") setStepKey("ANALYZING");
+        } catch {
+          // statuspolling er kun kosmetisk
+        }
+      }, 1500);
+
       const formData = new FormData();
-      formData.append("audio", file, file.name);
+      formData.append("audioUrl", audioUrl);
       formData.append("transcribeMode", mode);
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
@@ -268,6 +280,11 @@ export default function RecordPage() {
     } finally {
       if (poller.current) clearInterval(poller.current);
     }
+  }
+
+  function retrySubmit() {
+    const last = lastFile.current;
+    if (last) submitFile(last.file, last.durationSec, last.mode);
   }
 
   async function postAndNavigate(formData: FormData) {
@@ -380,6 +397,12 @@ export default function RecordPage() {
               <p className="mt-4 rounded-lg bg-danger-soft px-4 py-2 text-sm text-danger">
                 {error}
               </p>
+            )}
+
+            {phase === "error" && lastFile.current && (
+              <Button size="sm" className="mt-3" onClick={retrySubmit}>
+                Prøv å sende igjen
+              </Button>
             )}
 
             {/* Live-transkriptpanel */}

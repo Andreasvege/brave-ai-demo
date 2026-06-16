@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { uploadAudio } from "@/lib/upload-audio";
 
 type Phase = "idle" | "connecting" | "recording" | "processing" | "error";
 
@@ -69,8 +70,10 @@ export function PipRecordContent({
 
     try {
       const file = new File([blob], "opptak.webm", { type: blob.type });
+      // Last lyden direkte opp til Vercel Blob — utenom request-body.
+      const audioUrl = await uploadAudio(file);
       const formData = new FormData();
-      formData.append("audio", file, file.name);
+      formData.append("audioUrl", audioUrl);
       formData.append("transcribeMode", "batch");
       formData.append("notes", "");
       if (durationSec) formData.append("durationSec", String(durationSec));
