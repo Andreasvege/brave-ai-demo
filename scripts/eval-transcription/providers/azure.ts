@@ -39,6 +39,32 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     let firstWordMs: number | null = null;
     const parts: string[] = [];
 
+    // Resolver nøyaktig én gang. Azure kan signalere slutt via sessionStopped,
+    // canceled(EndOfStream), eller — som sikkerhetsnett — vår egen drain-timeout.
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      recognizer.stopContinuousRecognitionAsync(
+        () => {
+          recognizer.close();
+          resolve({
+            transcript: parts.join(" ").trim(),
+            timeToFirstWordMs: firstWordMs,
+            totalDurationMs: Date.now() - t0,
+          });
+        },
+        () => {
+          recognizer.close();
+          resolve({
+            transcript: parts.join(" ").trim(),
+            timeToFirstWordMs: firstWordMs,
+            totalDurationMs: Date.now() - t0,
+          });
+        }
+      );
+    };
+
     recognizer.recognizing = () => {
       if (firstWordMs === null) firstWordMs = Date.now() - t0;
     };
@@ -46,17 +72,17 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
       if (e.result.text) parts.push(e.result.text);
     };
     recognizer.canceled = (_s, e) => {
-      recognizer.close();
-      if (e.reason === sdk.CancellationReason.Error) reject(new Error(e.errorDetails));
+      if (e.reason === sdk.CancellationReason.Error) {
+        if (settled) return;
+        settled = true;
+        recognizer.close();
+        reject(new Error(e.errorDetails));
+      } else {
+        // EndOfStream e.l. — naturlig slutt, fullfør normalt
+        finish();
+      }
     };
-    recognizer.sessionStopped = () => {
-      recognizer.close();
-      resolve({
-        transcript: parts.join(" ").trim(),
-        timeToFirstWordMs: firstWordMs,
-        totalDurationMs: Date.now() - t0,
-      });
-    };
+    recognizer.sessionStopped = () => finish();
 
     recognizer.startContinuousRecognitionAsync(async () => {
       const chunks = chunkPcm(wavPath);
@@ -68,8 +94,9 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
         await new Promise((r) => setTimeout(r, 100)); // sanntidsmating: 100ms per 100ms-chunk
       }
       pushStream.close();
-      // Drain: gi Azure tid til å ferdigstille de siste segmentene før stopp
-      setTimeout(() => recognizer.stopContinuousRecognitionAsync(), 5000);
+      // Sikkerhetsnett: hvis Azure ikke selv signaliserer slutt innen drain-vinduet,
+      // fullfør likevel slik at harnesset aldri henger.
+      setTimeout(finish, 8000);
     });
   });
 }
