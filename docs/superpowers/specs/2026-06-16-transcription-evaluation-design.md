@@ -14,13 +14,13 @@ Gjennomføre en faktabasert evaluering av de store tale-til-tekst-leverandørene
 
 ## Kandidater
 
-| Provider | Batch | Streaming | Norsk kode |
-|---|---|---|---|
-| Azure Speech (nåværende) | ✅ Fast Transcription REST | ✅ WebSocket SDK | `nb-NO` |
-| AWS Transcribe | ✅ via streaming API (unngår S3) | ✅ HTTP/2 streaming | `no-NO` |
-| Google Cloud Speech (Chirp) | ✅ direkte upload (≤60s) / GCS (>60s) | ✅ gRPC streaming | `nb-NO` |
-| OpenAI Whisper | ✅ | ❌ | `no` |
-| Deepgram | ✅ | ✅ WebSocket | `nb` |
+| Provider                    | Batch                                 | Streaming           | Norsk kode |
+|---                          |---                                    |---                  |         ---|
+| Azure Speech (nåværende)    | ✅ Fast Transcription REST            | ✅ WebSocket SDK    | `nb-NO`   |
+| AWS Transcribe              | ✅ via streaming API (unngår S3)      | ✅ HTTP/2 streaming | `no-NO`   |
+| Google Cloud Speech (Chirp) | ✅ direkte upload (≤60s) / GCS (>60s) | ✅ gRPC streaming   | `nb-NO`   |
+| OpenAI Whisper              | ✅                                    | ❌                  | `no`      |
+| Deepgram                    | ✅                                    | ✅ WebSocket        | `nb`      |
 
 ---
 

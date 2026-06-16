@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { PwaInstallButton } from "@/components/pwa-install-button";
+import { RecordFab } from "@/components/record-fab";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { auth, signOut } from "@/auth";
 import "./globals.css";
 
@@ -19,6 +22,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Brave CallAI",
   description: "Transkribering og AI-analyse av cold calls",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CallAI",
+  },
 };
 
 export default async function RootLayout({
@@ -33,6 +41,14 @@ export default async function RootLayout({
       lang="nb"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaInstallEvent = e;
+          });
+        `}} />
+      </head>
       <body className="min-h-full flex flex-col">
         <header className="sticky top-0 z-10 bg-bg/85 backdrop-blur-sm">
           <div className="brand-stripe" />
@@ -56,6 +72,7 @@ export default async function RootLayout({
                     <Link href="/record" className={`ml-2 ${buttonVariants({ variant: "accent", size: "sm" })}`}>
                       Nytt opptak
                     </Link>
+                    <PwaInstallButton />
                     <span className="ml-20 flex items-center gap-2 text-xs text-ink-soft">
                       {session.user.image && (
                         <Image
@@ -95,6 +112,8 @@ export default async function RootLayout({
             Brave CallAI · intern demo · kun konsulentens mikrofon tas opp
           </p>
         </footer>
+        {session?.user && <RecordFab />}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
