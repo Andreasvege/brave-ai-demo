@@ -12,7 +12,14 @@ export async function POST(request: Request): Promise<Response> {
       body,
       request,
       token: process.env.BLOB_READ_WRITE_TOKEN,
-      onBeforeGenerateToken: async () => ({
+      onBeforeGenerateToken: async (pathname) => {
+        // Begrens til app-kontrollert sti: `calls/<id>/audio.<ext>`. Avviser
+        // vilkårlige stier (path traversal / overskriving av andre blober) og
+        // forbereder per-bruker/team-namespace når multi-tenant kobles på.
+        if (!/^calls\/[a-zA-Z0-9-]+\/audio\.[a-zA-Z0-9]{1,8}$/.test(pathname)) {
+          throw new Error("Ugyldig opplastingssti");
+        }
+        return {
         allowedContentTypes: [
           "audio/webm",
           "audio/ogg",
@@ -28,7 +35,8 @@ export async function POST(request: Request): Promise<Response> {
         // her siden fila går browser → Blob, ikke gjennom funksjonen.
         maximumSizeInBytes: 500 * 1024 * 1024,
         addRandomSuffix: false,
-      }),
+        };
+      },
       // Ingen onUploadCompleted: pipelinen kjøres synkront i POST /api/calls
       // rett etter at klienten har fått blob-URL-en.
     });

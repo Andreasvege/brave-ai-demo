@@ -28,6 +28,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Valider klient-oppgitt audioUrl før den brukes i get(): må peke på vår
+  // Vercel Blob-store (https) og følge app-stien `calls/<id>/audio.<ext>`.
+  // Hindrer at en vilkårlig URL/streng sendes inn.
+  if (audioUrl && !isValidBlobUrl(audioUrl)) {
+    return Response.json({ error: "Ugyldig audioUrl" }, { status: 400 });
+  }
+
   const call = await prisma.call.create({
     data: {
       status: "RECORDED",
@@ -114,4 +121,17 @@ export async function POST(request: Request) {
 export async function GET() {
   const calls = await prisma.call.findMany({ orderBy: { createdAt: "desc" } });
   return Response.json(calls);
+}
+
+function isValidBlobUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname.endsWith(".blob.vercel-storage.com") &&
+      /^\/calls\/[a-zA-Z0-9-]+\/audio\.[a-zA-Z0-9]{1,8}$/.test(parsed.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
