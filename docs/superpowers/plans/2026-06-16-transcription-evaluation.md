@@ -524,11 +524,15 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     recognizer.startContinuousRecognitionAsync(async () => {
       const chunks = chunkPcm(wavPath);
       for (const c of chunks) {
-        pushStream.write(c.buffer.slice(c.byteOffset, c.byteOffset + c.byteLength));
-        await new Promise((r) => setTimeout(r, 10)); // simuler sanntid (raskere enn 100ms for kort kjøretid)
+        // Kopier til en ren ArrayBuffer (c.buffer kan være SharedArrayBuffer for tsc)
+        const ab = new ArrayBuffer(c.byteLength);
+        new Uint8Array(ab).set(c);
+        pushStream.write(ab);
+        await new Promise((r) => setTimeout(r, 100)); // sanntidsmating: 100ms per 100ms-chunk
       }
       pushStream.close();
-      setTimeout(() => recognizer.stopContinuousRecognitionAsync(), 2000);
+      // Drain: gi Azure tid til å ferdigstille de siste segmentene før stopp
+      setTimeout(() => recognizer.stopContinuousRecognitionAsync(), 5000);
     });
   });
 }
@@ -607,7 +611,8 @@ async function* audioStream(wavPath: string, delayMs: number) {
   }
 }
 
-// Felles kjøring. delayMs=0 → "batch" (så raskt som mulig), delayMs=10 → sanntidssimulering.
+// Felles kjøring. delayMs=0 → "batch" (så raskt som mulig — AWS venter på full stream, ingen avkutting),
+// delayMs=100 → sanntidssimulering for streaming (gyldig TTF, ingen avkutting).
 async function transcribe(wavPath: string, delayMs: number) {
   const c = client();
   const t0 = Date.now();
@@ -644,7 +649,7 @@ async function runBatch(wavPath: string): Promise<BatchResult> {
 }
 
 async function runStreaming(wavPath: string): Promise<StreamingResult> {
-  const r = await transcribe(wavPath, 10);
+  const r = await transcribe(wavPath, 100);
   return {
     transcript: r.transcript,
     timeToFirstWordMs: r.firstWordMs,
@@ -761,7 +766,7 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     (async () => {
       for (const chunk of chunkPcm(wavPath)) {
         stream.write({ audioContent: chunk });
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 100)); // sanntidsmating
       }
       stream.end();
     })().catch(reject);
@@ -915,7 +920,7 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     connection.on(LiveTranscriptionEvents.Open, async () => {
       for (const chunk of chunkPcm(wavPath)) {
         connection.send(chunk);
-        await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, 100)); // sanntidsmating
       }
       connection.finish();
     });
