@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval-transcribe": "tsx scripts/eval-transcription/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
@@ -23,14 +24,21 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-transcribe-streaming": "^3.1069.0",
+    "@deepgram/sdk": "^5.4.0",
+    "@google-cloud/speech": "^7.3.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "ffmpeg-static": "^5.3.0",
+    "openai": "^6.42.0",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

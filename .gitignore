@@ -46,3 +46,4 @@ prisma/dev.db-journal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/eval-results/
