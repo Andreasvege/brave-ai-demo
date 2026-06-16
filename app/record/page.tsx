@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon, CheckIcon } from "@/components/icons";
 import { uploadAudio } from "@/lib/upload-audio";
+import { collectRecording } from "@/lib/recording";
 
 type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
@@ -48,6 +49,9 @@ export default function RecordPage() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const poller = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptBox = useRef<HTMLDivElement | null>(null);
+  // Tidsstempel for opptaksstart — gir riktig varighet selv om fanen er i
+  // bakgrunnen (der setInterval strupes til ~1/min).
+  const startedAt = useRef(0);
   // Beholder siste opptak i minnet så «Prøv igjen» kan sende på nytt uten nytt opptak.
   const lastFile = useRef<{ file: File; durationSec?: number; mode: "batch" | "file" } | null>(null);
 
@@ -123,8 +127,12 @@ export default function RecordPage() {
     interimRef.current = "";
     setPhrases([]);
     setInterim("");
+    startedAt.current = Date.now();
     setSeconds(0);
-    timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    timer.current = setInterval(
+      () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
+      1000
+    );
     setPhase("recording");
   }
 
@@ -139,8 +147,12 @@ export default function RecordPage() {
 
     recorder.start(500);
     mediaRecorder.current = recorder;
+    startedAt.current = Date.now();
     setSeconds(0);
-    timer.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+    timer.current = setInterval(
+      () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
+      1000
+    );
     setPhase("recording");
   }
 
@@ -173,24 +185,18 @@ export default function RecordPage() {
       setPhase("error");
       return;
     }
-    await submitLive(transcript, seconds);
+    await submitLive(transcript, Math.round((Date.now() - startedAt.current) / 1000));
   }
 
   async function stopBatch() {
     const recorder = mediaRecorder.current;
     if (!recorder) return;
 
-    const blob = await new Promise<Blob>((resolve) => {
-      recorder.onstop = () => {
-        resolve(new Blob(audioChunks.current, { type: recorder.mimeType || "audio/webm" }));
-      };
-      recorder.stop();
-      recorder.stream.getTracks().forEach((t) => t.stop());
-    });
-
+    const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
+    const blob = await collectRecording(recorder, audioChunks.current);
     mediaRecorder.current = null;
     const file = new File([blob], "opptak.webm", { type: blob.type });
-    await submitFile(file, seconds, "batch");
+    await submitFile(file, durationSec, "batch");
   }
 
   async function abortRecording() {

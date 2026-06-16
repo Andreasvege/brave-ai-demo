@@ -14,6 +14,10 @@ export function PwaInstallButton() {
   useEffect(() => {
     const captured = (window as Window & { __pwaInstallEvent?: BeforeInstallPromptEvent }).__pwaInstallEvent;
     if (captured) {
+      // Bevisst synkron setState: hendelsen fanges av inline-script i <head> før
+      // React hydrerer (se CLAUDE.md/PWA). Å lese den her er eneste måten å få den
+      // etter at React tar over — refaktor risikerer hydrerings-mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstallEvent(captured);
       return;
     }

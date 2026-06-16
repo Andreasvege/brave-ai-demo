@@ -19,3 +19,24 @@ export async function uploadAudio(
   });
   return blob.url;
 }
+
+// Laster opp et ferdig opptak og starter pipelinen (POST /api/calls med blob-URL,
+// ikke fila inline). Delt av PiP-widgeten og FAB-en. Kaster ved feil.
+export async function submitRecordedBlob(
+  blob: Blob,
+  opts: { durationSec?: number; notes?: string; transcribeMode?: string } = {}
+): Promise<{ id?: string; error?: string }> {
+  const file = new File([blob], "opptak.webm", { type: blob.type });
+  const audioUrl = await uploadAudio(file);
+
+  const formData = new FormData();
+  formData.append("audioUrl", audioUrl);
+  formData.append("transcribeMode", opts.transcribeMode ?? "batch");
+  formData.append("notes", opts.notes ?? "");
+  if (opts.durationSec) formData.append("durationSec", String(opts.durationSec));
+
+  const res = await fetch("/api/calls", { method: "POST", body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Feil ${res.status}`);
+  return data;
+}

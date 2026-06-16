@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon } from "@/components/icons";
 import { PipRecordContent } from "@/components/pip-record-content";
-import { uploadAudio } from "@/lib/upload-audio";
+import { submitRecordedBlob } from "@/lib/upload-audio";
+import { collectRecording } from "@/lib/recording";
 import { cn } from "@/lib/utils";
 
 type Phase = "idle" | "open" | "connecting" | "recording" | "processing" | "error";
@@ -21,12 +22,22 @@ export function RecordFab() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const durationRef = useRef(0);
+  const startedAt = useRef(0);
 
   useEffect(() => {
     return () => {
       if (timer.current) clearInterval(timer.current);
-      mediaRecorder.current?.stream?.getTracks().forEach((t) => t.stop());
+      const rec = mediaRecorder.current;
+      if (rec && rec.state !== "inactive") {
+        // Rives ned midt i opptak: finaliser og last opp i stedet for å forkaste.
+        const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
+        mediaRecorder.current = null;
+        collectRecording(rec, audioChunks.current)
+          .then((blob) => submitRecordedBlob(blob, { durationSec }))
+          .catch((e) => console.error("FAB-nedriving: lagring av opptak feilet", e));
+      } else {
+        rec?.stream?.getTracks().forEach((t) => t.stop());
+      }
     };
   }, []);
 
@@ -44,12 +55,12 @@ export function RecordFab() {
 
       recorder.start(500);
       mediaRecorder.current = recorder;
-      durationRef.current = 0;
+      startedAt.current = Date.now();
       setSeconds(0);
-      timer.current = setInterval(() => {
-        durationRef.current += 1;
-        setSeconds((s) => s + 1);
-      }, 1000);
+      timer.current = setInterval(
+        () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
+        1000
+      );
       setPhase("recording");
     } catch (err) {
       setError(
@@ -66,31 +77,13 @@ export function RecordFab() {
     const recorder = mediaRecorder.current;
     if (!recorder) return;
 
-    const durationSec = durationRef.current;
-    const blob = await new Promise<Blob>((resolve) => {
-      recorder.onstop = () => {
-        resolve(new Blob(audioChunks.current, { type: recorder.mimeType || "audio/webm" }));
-      };
-      recorder.stop();
-      recorder.stream.getTracks().forEach((t) => t.stop());
-    });
+    const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
+    const blob = await collectRecording(recorder, audioChunks.current);
     mediaRecorder.current = null;
 
     setPhase("processing");
     try {
-      const file = new File([blob], "opptak.webm", { type: blob.type });
-      // Last lyden direkte opp til Vercel Blob — utenom request-body.
-      const audioUrl = await uploadAudio(file);
-      const formData = new FormData();
-      formData.append("audioUrl", audioUrl);
-      formData.append("transcribeMode", "batch");
-      formData.append("notes", "");
-      if (durationSec) formData.append("durationSec", String(durationSec));
-
-      const res = await fetch("/api/calls", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Feil ${res.status}`);
-
+      await submitRecordedBlob(blob, { durationSec });
       setPhase("idle");
       router.refresh();
     } catch (err) {

@@ -48,7 +48,11 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
       }
       connection.finish();
     });
-    connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+    type DgTranscript = {
+      is_final?: boolean;
+      channel?: { alternatives?: Array<{ transcript?: string }> };
+    };
+    connection.on(LiveTranscriptionEvents.Transcript, (data: DgTranscript) => {
       if (firstWordMs === null) firstWordMs = Date.now() - t0;
       const alt = data.channel?.alternatives?.[0]?.transcript;
       if (data.is_final && alt) finals.push(alt);
@@ -60,8 +64,8 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
         totalDurationMs: Date.now() - t0,
       });
     });
-    connection.on(LiveTranscriptionEvents.Error, (err: any) =>
-      reject(new Error(err?.message ?? String(err)))
+    connection.on(LiveTranscriptionEvents.Error, (err: unknown) =>
+      reject(new Error(err instanceof Error ? err.message : String(err)))
     );
   });
 }

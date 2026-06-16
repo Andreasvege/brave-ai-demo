@@ -44,7 +44,7 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
         interimResults: true,
       })
       .on("error", reject)
-      .on("data", (data: any) => {
+      .on("data", (data: { results?: Array<{ isFinal?: boolean; alternatives?: Array<{ transcript?: string }> }> }) => {
         const result = data.results?.[0];
         if (!result) return;
         if (firstWordMs === null) firstWordMs = Date.now() - t0;
