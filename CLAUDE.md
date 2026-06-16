@@ -56,6 +56,8 @@ Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
   primitives i `components/ui/` (Button/buttonVariants, Badge, Card/CardAccentHeader/
   CardContent/Kicker, Spinner), domenekomponenter i `components/` (call-badges, icons).
   Ny UI skal bygges av disse — ikke inline Tailwind-knapper/kort i sidene.
+- **`position: fixed` global UI** (FAB, overlays) MÅ ligge i `layout.tsx`, ikke inne i `.fade-up`-div —
+  `transform`-animasjonen oppretter nytt stacking context og bryter `fixed`-posisjonering
 - Tidssone: hardkodet `Europe/Oslo` i `lib/format.ts` (`formatDate`)
 - CRM/kalender-API er ikke koblet til ennå, men arkitekturen skal gjøre det mulig
 - **Auth**: NextAuth.js v5 med Google OAuth. Kun `@brave.no`-adresser slipper inn.
@@ -63,6 +65,15 @@ Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
 - **Delt tilgang**: Alle innloggede brukere ser og redigerer alle samtaler — bevisst
   design (teamverktøy). `userId`/`teamId` er i DB men ikke koblet til tilgangsstyring ennå.
   Kobles inn når produktet selges eksternt. IDOR-flagging er ikke relevant innenfor ett team.
+
+## PWA
+- Manifest: `app/manifest.ts`, service worker: `public/sw.js`, ikoner: `public/icons/`
+- `beforeinstallprompt` fanges tidlig via inline script i `layout.tsx <head>` → `window.__pwaInstallEvent`
+  (React hydrerer for sent til å fange hendelsen via useEffect alene)
+- **Middleware-matcher MÅ ekskludere PWA-ressurser** — ellers redirectes de til `/login`:
+  `manifest.webmanifest|sw.js|icons/` må inn i `config.matcher`-negasjonen i `middleware.ts`
+- Flytende opptakswidget: `components/pip-record-content.tsx` via Document Picture-in-Picture API
+  (Chrome 116+). Rendres med `ReactDOM.createRoot` inn i PiP-vinduets document. Fallback: modal-overlay.
 
 ## Fremtidige DB-endringer
 - `outcome` som egen kolonne er i skjemaet men populeres ikke ennå (ligger i `analysis` JSONB)
