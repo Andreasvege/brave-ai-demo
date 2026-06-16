@@ -23,6 +23,10 @@ gir bedre fundament.
 - **Vercel Blob** (`@vercel/blob`) — private lydfillagring. **VIKTIG: send alltid tokenet
   eksplisitt** — SDK plukker ikke opp `BLOB_READ_WRITE_TOKEN` automatisk fra miljøet:
   `put(path, file, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN })`
+  - **`BLOB_READ_WRITE_TOKEN` MÅ ligge i Vercels env (Production+Preview)**, ikke bare i
+    `.env.local` — ellers feiler klient-token kun på deploy («Failed to retrieve the client token»).
+  - Client upload (`upload()`) støtter `access: "private"`. Normaliser contentType til
+    base-MIME (strip `;codecs=opus`) — MediaRecorder-typen matcher ellers ikke `allowedContentTypes`.
 - Nøkler i `.env.local`: AZURE_SPEECH_KEY/REGION, ANTHROPIC_API_KEY, AUTH_SECRET,
   GOOGLE_CLIENT_ID/SECRET, POSTGRES_PRISMA_URL, DATABASE_URL_UNPOOLED, BLOB_READ_WRITE_TOKEN
 
@@ -36,9 +40,14 @@ Nåværende felt: `id`, `title`, `status`, `transcribeMode`, `outcome`, `userId`
 Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
 
 ## Arkitektur
-- `POST /api/calls` — synkron pipeline. Tar multipart med `transcript` (live) eller
-  `audio` (batch/fil) + `notes`, `durationSec`, `transcribeMode`. Ved lydfil: laster
-  opp til Vercel Blob (privat) → Azure fast transcription → Claude-analyse → lagrer alt.
+- `POST /api/calls` — synkron pipeline. Lyd lastes opp **klient-side** til Vercel Blob
+  FØR dette kallet (`lib/upload-audio.ts` → `upload()` → `/api/calls/upload`), så POST får
+  `audioUrl` + `notes`/`durationSec`/`transcribeMode` — IKKE fila inline (Vercels ~4,5 MB
+  request-body-grense gjør lange opptak umulige inline; var rotårsak til stille tap).
+  Serveren henter bloben via `get()` → Azure → Claude. `transcript` (live) går rett til
+  analyse. Inline `audio`-File er kun beholdt som legacy/curl-vei.
+- `POST /api/calls/upload` — utsteder klient-token for Blob client upload (`handleUpload`).
+  Validerer sti `calls/<id>/audio.<ext>`; `addRandomSuffix: true` så stier blir unike.
 - `GET /api/calls/[id]/audio` — proxy-rute som serverer privat blob bak auth.
   Bruk `get(url, { access: "private", token: ... })` fra `@vercel/blob`.
 - `GET/PATCH/DELETE /api/calls/[id]` — detalj, titteledit, hard delete (sletter også blob).
@@ -95,3 +104,8 @@ curl -X POST http://localhost:3000/api/calls -F "audio=@lydopptak/testopptak1.m4
 ```
 Responsen skal ha status DONE og `analysis` med summary, outcome, sales_tips,
 suggested_crm_update og suggested_meeting. `npx tsc --noEmit` og `npm run lint` skal være grønne.
+
+- Curl-testen over krever **innlogget økt** — uten cookie redirecter middleware til `/login`
+  (307). Ekte ende-til-ende-test av opptak må gjøres i nettleser.
+- I en fersk `git worktree` feiler `npx tsc --noEmit` med `RouteContext`/`PageProps`-feil
+  til `npx next typegen` har generert Next-typene.

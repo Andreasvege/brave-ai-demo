@@ -14,7 +14,7 @@ async function runBatch(wavPath: string): Promise<BatchResult> {
   const t0 = Date.now();
   const { result, error } = await client.listen.prerecorded.transcribeFile(
     readFileSync(wavPath),
-    { model: "nova-2", language: "no", smart_format: true }
+    { model: "nova-3", language: "no", smart_format: true }
   );
   if (error) throw new Error(error.message ?? String(error));
   const transcript =
@@ -26,7 +26,7 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
   const client = dg();
   return new Promise((resolve, reject) => {
     const connection = client.listen.live({
-      model: "nova-2",
+      model: "nova-3",
       language: "no",
       encoding: "linear16",
       sample_rate: AUDIO_FORMAT.SAMPLE_RATE,

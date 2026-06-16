@@ -24,3 +24,9 @@ export type ProviderReport = {
   batch?: BatchResult;
   streaming?: StreamingResult;
 };
+
+export type FileEvaluation = {
+  audioFile: string;
+  durationSec: number;
+  reports: ProviderReport[];
+};
