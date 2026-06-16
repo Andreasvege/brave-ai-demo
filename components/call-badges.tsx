@@ -2,7 +2,7 @@ import { Badge, type BadgeProps } from "@/components/ui/badge";
 
 const OUTCOMES: Record<string, { label: string; tone: BadgeProps["tone"] }> = {
   booked_meeting: { label: "Møte booket", tone: "green" },
-  callback: { label: "Ring tilbake", tone: "amber" },
+  callback: { label: "Ring tilbake", tone: "green" },
   not_interested: { label: "Ikke interessert", tone: "faint" },
   no_answer: { label: "Ikke svar", tone: "faint" },
   unclear: { label: "Uavklart", tone: "amber" },

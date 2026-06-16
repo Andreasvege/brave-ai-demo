@@ -4,8 +4,8 @@ Lydfil: lydopptak/testopptak1.m4a (1 min 20 sek)
 ## Metrikk-oversikt
 | Provider | Batch (ms) | Streaming TTF (ms) | Kost/min (USD) |
 |---|---|---|---|
-| Azure | 3 075 | 1 881 | $0.0170 |
-| AWS Transcribe | 0 | — | $0.0240 |
+| Azure | 2 908 | 1 876 | $0.0170 |
+| AWS Transcribe | 45 950 | 1 685 | $0.0240 |
 | Google Chirp | 0 | — | $0.0160 |
 | OpenAI Whisper | 0 | — | $0.0060 |
 | Deepgram | 0 | — | $0.0059 |
@@ -15,7 +15,7 @@ Lydfil: lydopptak/testopptak1.m4a (1 min 20 sek)
 > Hei, det er Andreas som ringer fra brave media her. Ja, snakker jeg med Petter herlig Petter. Jeg ringer for å høre åssen vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter bedrifter som driver med salg, så jeg lurte på hva, hva er det dere selger egentlig? Du jobber i elkjøp? Ja ja, så du selger hvitevarer og teknologi herlig ja, men kult o. k. trenger dere noe hjelp med salg da åssen går det med møtepakken om Dagen. Litt vanskelig? Ja, ja, det syns jeg er vanskelig å interessere spesifikke kunder jeg o. k. ja er du beslutningstaker hos dere eller er det deg jeg kan snakke med for å booke et møte? Ja o. k. ja, men herlig kunne det vært aktuelt da vi tilbyr salgscoaching, og vi tilbyr veiledning og vi tilbyr møtebooking og vi tilbyr prospekting for dere, så vi kan gjerne tilby en hel pakke hvis du har lyst til å ha et møte og snakke om det senere. Herlig så bra o. k., men hva tenker du om? Skal vi se om bare sjekke kalenderen min her? Neste onsdag klokken halv 3. Passer det for deg? Nei o. k. hva med torsdag klokken 02.00? Herlig så bra da sender jeg deg en Google invite nå, og så snakkes vi da ålreit hei.
 
 ### AWS Transcribe
-_Feil: AWS_ACCESS_KEY_ID/SECRET/REGION mangler_
+> Hei, det er Andreas som ringer fra Brave Media her. Ja, snakker jeg med Petter. Herlig, Petter, jeg eh ringer for å høre hvordan vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter eh bedrifter som driver med salg. Så jeg lurte på hva hva er det dere selger egentlig? Du jobber i Elkjøp ja. Ja, så du selger hvitevarer og teknologi. Herlig. Ja men kult. OK. Trenger dere noe hjelp med salg da, hvordan går det med møtebooking om dagen? Litt vanskelig ja. Ja, det syns det er vanskelig å insistere spesifikke kunder ja. OK. Ja, er du beslutningstagerer hos dere eller er det deg jeg kan snakke med for å booke et møte? Ja. OK, ja, men herlig. em Kunne det vært aktuelt da? Vi tilbyr salgscoaching og vi tilbyr eh veiledning, og vi tilbyr møtebooking, og vi tilbyr prospeking for dere, så vi kan gjerne tilby en hel pakke, hvis du har lyst til å ha et møte opp snakke om det senere. Herlig, så bra. OK, men hva tenker du om, skal vi se, må bare sjekke kalenderen min her. em Neste onsdag klokken halv tre. Passer det for deg? Nei. OK. Hva med torsdag klokken to? Herlig, så bra. Da eh sender jeg deg en Google invite nå, og så eh snakker vi da. Alright. Hei.
 
 ### Google Chirp
 _Feil: GOOGLE_APPLICATION_CREDENTIALS mangler_
@@ -31,7 +31,7 @@ _Feil: DEEPGRAM_API_KEY mangler_
 > Hei, det er Andreas som ringer fra brave media her. Ja snakker jeg med Petter? Herlig Petter. Jeg ringer for å høre hvordan vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter bedrifter som driver med salg, så jeg lurte på hva, hva er det dere selger egentlig? Du jobber i elkjøp, ja så du selger hvitevarer og teknologi herlig ja, men kult OK, trenger du noe hjelp med salg? Hvordan går det med møtebooking om Dagen? Litt vanskelig? Ja. Ja, det synes det er vanskelig å se spesifikke kunder jeg. Ok. Ja er du beslutningstager hos dere, eller er det deg jeg kan snakke med for å booke et møte? Ja. Ok ja, men herlig kunne det vært aktuelt da vi tilbyr salgscoaching, og vi tilbyr veiledning og vi tilbyr møtebooking, og vi tilbyr prospecting for dere. Så vi kan gjerne tilby en hel pakke hvis du har lyst til å ha et møte og snakke om det senere. Herlig så bra ok, men hva tenker du om? Skal vi bare sjekke kalenderen her? Neste onsdag klokken halv 3. Passer det for deg? Nei. Ok, hva med torsdag klokka 02.00? Herlig så bra da sender jeg deg en Google invite nå, og så snakket vi da ålreit hei.
 
 ### AWS Transcribe
-_Feil: AWS_ACCESS_KEY_ID/SECRET/REGION mangler_
+> Hei, det er Andreas som ringer fra Brave Media her. Ja, snakker jeg med Petter. Herlig, Petter, jeg eh ringer for å høre hvordan vi kan hjelpe deg. Vi er et konsulentfirma og vi er på utkikk etter eh bedrifter som driver med salg. Så jeg lurte på hva hva er det dere selger egentlig? Du jobber i Elkjøp ja. Ja, så du selger hvitevarer og teknologi. Herlig. Ja men kult. OK. Trenger dere noe hjelp med salg da, hvordan går det med møtebooking om dagen? Litt vanskelig ja. Ja, det syns det er vanskelig å insistere spesifikke kunder ja. OK. Ja, er du beslutningstagerer hos dere eller er det deg jeg kan snakke med for å booke et møte? Ja. OK, ja, men herlig. em Kunne det vært aktuelt da? Vi tilbyr salgscoaching og vi tilbyr eh veiledning, og vi tilbyr møtebooking, og vi tilbyr prospeking for dere, så vi kan gjerne tilby en hel pakke, hvis du har lyst til å ha et møte opp snakke om det senere. Herlig, så bra. OK, men hva tenker du om, skal vi se, må bare sjekke kalenderen min her. em Neste onsdag klokken halv tre. Passer det for deg? Nei. OK. Hva med torsdag klokken to? Herlig, så bra. Da eh sender jeg deg en Google invite nå, og så eh snakker vi da. Alright. Hei.
 
 ### Google Chirp
 _Feil: GOOGLE_APPLICATION_CREDENTIALS mangler_
