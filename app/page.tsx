@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { buttonVariants } from "@/components/ui/button";
 import { MicIcon } from "@/components/icons";
 import { CallList } from "./call-list";
+import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
