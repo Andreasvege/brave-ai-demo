@@ -1,10 +1,13 @@
 import { toWav, wavDurationSec } from "./audio";
 import { writeReport } from "./report";
 import { azure } from "./providers/azure";
+import { aws } from "./providers/aws";
+import { google } from "./providers/google";
+import { openai } from "./providers/openai";
+import { deepgram } from "./providers/deepgram";
 import type { ProviderModule, ProviderReport } from "./types";
 
-// Providers fylles inn i Task 5–9.
-const providers: ProviderModule[] = [azure];
+const providers: ProviderModule[] = [azure, aws, google, openai, deepgram];
 
 async function main() {
   const input = process.argv[2];
