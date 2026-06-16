@@ -61,14 +61,15 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     recognizer.startContinuousRecognitionAsync(async () => {
       const chunks = chunkPcm(wavPath);
       for (const c of chunks) {
-        // Kopier til en frittstående ArrayBuffer (SDK godtar ikke SharedArrayBuffer-typen).
+        // Kopier til en ren ArrayBuffer (c.buffer kan være SharedArrayBuffer for tsc)
         const ab = new ArrayBuffer(c.byteLength);
         new Uint8Array(ab).set(c);
         pushStream.write(ab);
-        await new Promise((r) => setTimeout(r, 10)); // simuler sanntid (raskere enn 100ms for kort kjøretid)
+        await new Promise((r) => setTimeout(r, 100)); // sanntidsmating: 100ms per 100ms-chunk
       }
       pushStream.close();
-      setTimeout(() => recognizer.stopContinuousRecognitionAsync(), 2000);
+      // Drain: gi Azure tid til å ferdigstille de siste segmentene før stopp
+      setTimeout(() => recognizer.stopContinuousRecognitionAsync(), 5000);
     });
   });
 }
