@@ -58,6 +58,12 @@ Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
   lydavspiller, CRM-kopi, kalender, re-analyser)
 - Lydfiler: lagres i Vercel Blob med privat tilgang. Slettes når samtalen slettes.
   Vises kun i detaljsiden med `<audio>`-spiller + nedlastingslenke.
+- **Opptak (`lib/recording.ts`):** `collectRecording()` finaliserer MediaRecorder uten å henge
+  (onstop + onerror + 5s failsafe). **Gotcha:** en død mikrofon (Bluetooth-rutet til annen enhet,
+  eller dempet) gir 0-byte blob → ender som kryptisk «Azure 422 EmptyAudioFile» HELT på slutten av
+  pipelinen. `monitorMicLevel()` (Web Audio nivåmåling) gir sanntids «ingen lyd»-varsel. Tre
+  opptaksflater deler mønsteret — `/record`, FAB (`record-fab.tsx`) og PiP (`pip-record-content.tsx`)
+  — endre alle tre samtidig. PiP rendrer i eget dokument → inline styles, ikke Tailwind-klasser.
 
 ## Konvensjoner
 - Alt UI på norsk; lys Linear-estetikk, designtokens i `app/globals.css`, aksent #3a5c28
@@ -109,3 +115,10 @@ suggested_crm_update og suggested_meeting. `npx tsc --noEmit` og `npm run lint` 
   (307). Ekte ende-til-ende-test av opptak må gjøres i nettleser.
 - I en fersk `git worktree` feiler `npx tsc --noEmit` med `RouteContext`/`PageProps`-feil
   til `npx next typegen` har generert Next-typene.
+
+## STT-leverandørevaluering (egen sak, ikke runtime)
+Pågående evaluering av tale-til-tekst-leverandører (Azure/AWS/Google/Deepgram/OpenAI) for å velge
+beste på norsk kvalitet/latency/pris. Harness: `scripts/eval-transcription/`
+(`npm run eval-transcribe lydopptak/` → per-fil-rapporter + `SAMMENDRAG.md`; kjør på *mappa*, ikke
+enkeltfil med `ø` i navn pga. NFC/NFD-bug). Funn: `docs/transcription-findings.md`. Siste handoff +
+status: `docs/superpowers/specs/` (nyeste dato). Kvalitet skåres manuelt — harnessen måler kun tall.

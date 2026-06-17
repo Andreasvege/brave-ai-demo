@@ -37,6 +37,31 @@ transkripter (rask mating kuttet halen). Forventet for et verktøy som kjøres s
 Skrives til `eval-results/<dato>/report.md` (lesbar) og `raw.json` (rådata).
 Resultatmappa er git-ignorert (kan inneholde transkripter).
 
+## Kvalitetsscoring (WER + nøkkelord)
+
+`eval-transcribe` måler kun latency/pris. Kvalitet scores separat — **uten** å
+re-transkribere (leser `raw.json`):
+
+```bash
+npm run eval-score                      # nyeste eval-results/<dato>/
+npm run eval-score eval-results/2026-06-17
+```
+
+Den gjør to ting:
+
+1. **WER/CER mot fasit** → `<dato>/WER.md`. Krever en håndskrevet fasit per fil i
+   `<dato>/<slug>/fasit.txt`. Mangler den, lages en **stub** seedet med beste
+   provider-transkript som utkast. Stubben har en `# TODO`-markør — scoringen hopper
+   over fila til du fjerner markøren (ellers gir det uredigerte utkastet falsk 0 % WER).
+   Rett utkastet mot lyden. `#`-linjer ignoreres. **Caveat:** WER straffer alle ordfeil
+   likt (sammensatte tall/ord matcher ikke perfekt — skriv tall som siffer i fasiten).
+2. **Nøkkelord-uenighet** → `<dato>/<slug>/nokkelord.md`. Auto-uttrekk av egennavn/tall,
+   med ✓/· per provider, **uenighet øverst**. Fanger egennavn-kvalitet (Cuba/Kuba,
+   Brave/Braie) som WER ikke vekter. Trenger ikke fasit — huk av riktig variant manuelt.
+
+Typisk flyt: kjør `eval-transcribe` → `eval-score` (lager stubs + nøkkelord) → rett
+fasit-filene → `eval-score` igjen for WER-tall.
+
 ## Merknader
 
 - **Deepgram er pinnet til `@deepgram/sdk@^3`** — v5 er en regenerert SDK med et

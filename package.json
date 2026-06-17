@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "eval-transcribe": "tsx scripts/eval-transcription/index.ts"
+    "eval-transcribe": "tsx scripts/eval-transcription/index.ts",
+    "eval-score": "tsx scripts/eval-transcription/score.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
