@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { submitRecordedBlob } from "@/lib/upload-audio";
-import { collectRecording } from "@/lib/recording";
+import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
 
 type Phase = "idle" | "connecting" | "recording" | "processing" | "error";
 
@@ -16,15 +16,18 @@ export function PipRecordContent({
   const [phase, setPhase] = useState<Phase>("idle");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noAudio, setNoAudio] = useState(false);
 
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const micMonitor = useRef<MicLevelMonitor | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAt = useRef(0);
 
   useEffect(() => {
     return () => {
       if (timer.current) clearInterval(timer.current);
+      micMonitor.current?.stop();
       const rec = mediaRecorder.current;
       if (rec && rec.state !== "inactive") {
         // PiP-vinduet lukkes midt i opptak: ikke forkast opptaket. Opptaker og
@@ -53,6 +56,12 @@ export function PipRecordContent({
       };
       recorder.start(500);
       mediaRecorder.current = recorder;
+      setNoAudio(false);
+      try {
+        micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+      } catch {
+        micMonitor.current = null;
+      }
       startedAt.current = Date.now();
       setSeconds(0);
       timer.current = setInterval(
@@ -71,6 +80,9 @@ export function PipRecordContent({
     const recorder = mediaRecorder.current;
     if (!recorder) return;
 
+    micMonitor.current?.stop();
+    micMonitor.current = null;
+    setNoAudio(false);
     const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
     const blob = await collectRecording(recorder, audioChunks.current);
     mediaRecorder.current = null;
@@ -93,7 +105,10 @@ export function PipRecordContent({
       recorder.stop();
       mediaRecorder.current = null;
     }
+    micMonitor.current?.stop();
+    micMonitor.current = null;
     audioChunks.current = [];
+    setNoAudio(false);
     setSeconds(0);
     setError(null);
     setPhase("idle");
@@ -155,7 +170,14 @@ export function PipRecordContent({
             {phase === "connecting" ? "Kobler til…" : "Behandler…"}
           </p>
         )}
-        {!error && isRecording && <p style={styles.hint}>Tar opp</p>}
+        {!error && isRecording &&
+          (noAudio ? (
+            <p style={styles.warn} title="Sjekk mikrofonen — koblet til Bluetooth?">
+              ⚠️ Ingen lyd
+            </p>
+          ) : (
+            <p style={styles.hint}>Tar opp</p>
+          ))}
       </div>
 
       {/* Avbryt — alltid synlig, grået ut når ikke aktiv */}
@@ -237,6 +259,12 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: "11px",
     color: "#dc2626",
+  },
+  warn: {
+    margin: 0,
+    fontSize: "11px",
+    fontWeight: 600,
+    color: "#b45309",
   },
   abortBtn: {
     background: "none",

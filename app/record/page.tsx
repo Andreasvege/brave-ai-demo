@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon, CheckIcon } from "@/components/icons";
 import { uploadAudio } from "@/lib/upload-audio";
-import { collectRecording } from "@/lib/recording";
+import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
 
 type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
@@ -34,6 +34,8 @@ export default function RecordPage() {
   const [seconds, setSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Varsel når mikrofonen ikke gir lyd (f.eks. Bluetooth-rutet til en annen enhet).
+  const [noAudio, setNoAudio] = useState(false);
 
   // Live-transkripsjon
   const [phrases, setPhrases] = useState<string[]>([]);
@@ -45,6 +47,7 @@ export default function RecordPage() {
   // Batch-opptak
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const micMonitor = useRef<MicLevelMonitor | null>(null);
 
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const poller = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -61,6 +64,7 @@ export default function RecordPage() {
       if (poller.current) clearInterval(poller.current);
       recognizer.current?.close();
       mediaRecorder.current?.stop();
+      micMonitor.current?.stop();
     };
   }, []);
 
@@ -147,6 +151,14 @@ export default function RecordPage() {
 
     recorder.start(500);
     mediaRecorder.current = recorder;
+    // Overvåk faktisk mikrofonnivå — varsle hvis ingen lyd kommer inn.
+    // Best effort: en feil i målingen skal aldri hindre selve opptaket.
+    setNoAudio(false);
+    try {
+      micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+    } catch {
+      micMonitor.current = null;
+    }
     startedAt.current = Date.now();
     setSeconds(0);
     timer.current = setInterval(
@@ -192,6 +204,9 @@ export default function RecordPage() {
     const recorder = mediaRecorder.current;
     if (!recorder) return;
 
+    micMonitor.current?.stop();
+    micMonitor.current = null;
+    setNoAudio(false);
     const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
     const blob = await collectRecording(recorder, audioChunks.current);
     mediaRecorder.current = null;
@@ -222,6 +237,9 @@ export default function RecordPage() {
         recorder.stop();
         mediaRecorder.current = null;
       }
+      micMonitor.current?.stop();
+      micMonitor.current = null;
+      setNoAudio(false);
       audioChunks.current = [];
     }
 
@@ -398,6 +416,16 @@ export default function RecordPage() {
                     : "Tar opp — transkriberes når du stopper"
                   : "Klikk for å starte opptak"}
             </p>
+
+            {isRecording && noAudio && (
+              <p className="mt-4 flex items-start gap-2 rounded-lg bg-amber-soft px-4 py-2 text-sm text-amber-ink">
+                <span aria-hidden>⚠️</span>
+                <span>
+                  Ingen lyd oppdaget. Sjekk at riktig mikrofon er valgt — er den
+                  koblet til en annen enhet via Bluetooth, fanger den ikke opp tale.
+                </span>
+              </p>
+            )}
 
             {error && (
               <p className="mt-4 rounded-lg bg-danger-soft px-4 py-2 text-sm text-danger">

@@ -20,10 +20,14 @@ async function runBatch(wavPath: string): Promise<BatchResult> {
   const c = getClient();
   const t0 = Date.now();
   const audioBytes = readFileSync(wavPath).subarray(44).toString("base64");
-  const [response] = await c.recognize({
+  // longRunningRecognize (ikke sync recognize) — sync har 60s-grense; ekte
+  // samtaler er lengre. Inline content holder opp til ~10MB (≈5 min WAV);
+  // større filer ville krevd GCS-uri.
+  const [operation] = await c.longRunningRecognize({
     config: recognitionConfig,
     audio: { content: audioBytes },
   });
+  const [response] = await operation.promise();
   const transcript = (response.results ?? [])
     .map((r) => r.alternatives?.[0]?.transcript ?? "")
     .join(" ")
@@ -39,10 +43,7 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
     const finals: string[] = [];
 
     const stream = c
-      .streamingRecognize({
-        config: recognitionConfig,
-        interimResults: true,
-      })
+      .streamingRecognize({ config: recognitionConfig, interimResults: true })
       .on("error", reject)
       .on("data", (data: { results?: Array<{ isFinal?: boolean; alternatives?: Array<{ transcript?: string }> }> }) => {
         const result = data.results?.[0];
@@ -60,9 +61,12 @@ function runStreaming(wavPath: string): Promise<StreamingResult> {
         });
       });
 
+    // Config sendes via konstruktør-argumentet over. Streamen wrapper hver
+    // write() automatisk som audio_content, så vi skriver RÅ buffere her —
+    // ikke { audioContent }-objekter (det ville blitt dobbelt-wrappet).
     (async () => {
       for (const chunk of chunkPcm(wavPath)) {
-        stream.write({ audioContent: chunk });
+        stream.write(chunk);
         await new Promise((r) => setTimeout(r, 100)); // sanntidsmating
       }
       stream.end();

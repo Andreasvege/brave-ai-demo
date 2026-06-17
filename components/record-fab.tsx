@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { MicIcon } from "@/components/icons";
 import { PipRecordContent } from "@/components/pip-record-content";
 import { submitRecordedBlob } from "@/lib/upload-audio";
-import { collectRecording } from "@/lib/recording";
+import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
 import { cn } from "@/lib/utils";
 
 type Phase = "idle" | "open" | "connecting" | "recording" | "processing" | "error";
@@ -18,15 +18,18 @@ export function RecordFab() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noAudio, setNoAudio] = useState(false);
 
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const micMonitor = useRef<MicLevelMonitor | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAt = useRef(0);
 
   useEffect(() => {
     return () => {
       if (timer.current) clearInterval(timer.current);
+      micMonitor.current?.stop();
       const rec = mediaRecorder.current;
       if (rec && rec.state !== "inactive") {
         // Rives ned midt i opptak: finaliser og last opp i stedet for å forkaste.
@@ -55,6 +58,12 @@ export function RecordFab() {
 
       recorder.start(500);
       mediaRecorder.current = recorder;
+      setNoAudio(false);
+      try {
+        micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+      } catch {
+        micMonitor.current = null;
+      }
       startedAt.current = Date.now();
       setSeconds(0);
       timer.current = setInterval(
@@ -77,6 +86,9 @@ export function RecordFab() {
     const recorder = mediaRecorder.current;
     if (!recorder) return;
 
+    micMonitor.current?.stop();
+    micMonitor.current = null;
+    setNoAudio(false);
     const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
     const blob = await collectRecording(recorder, audioChunks.current);
     mediaRecorder.current = null;
@@ -100,6 +112,9 @@ export function RecordFab() {
       recorder.stop();
       mediaRecorder.current = null;
     }
+    micMonitor.current?.stop();
+    micMonitor.current = null;
+    setNoAudio(false);
     audioChunks.current = [];
     setSeconds(0);
     setError(null);
@@ -212,6 +227,12 @@ export function RecordFab() {
               ? "Tar opp — trykk for å stoppe"
               : "Trykk her for å åpne full versjon med notater"}
           </p>
+
+          {isRecording && noAudio && (
+            <p className="rounded-lg bg-amber-soft px-4 py-2 text-center text-sm text-amber-ink">
+              ⚠️ Ingen lyd oppdaget — sjekk mikrofonen (Bluetooth?)
+            </p>
+          )}
 
           {error && (
             <p className="rounded-lg bg-danger-soft px-4 py-2 text-center text-sm text-danger">
