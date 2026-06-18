@@ -8,6 +8,7 @@ export const PROVIDERS: ProviderMeta[] = [
   { id: "azure-openai-batch", label: "Azure OpenAI (gpt-4o-transcribe)", mode: "batch", costPerMinuteUSD: 0.006 },
   { id: "aws-batch", label: "AWS Transcribe", mode: "batch", costPerMinuteUSD: 0.024 },
   { id: "azure-live", label: "Azure Speech (live)", mode: "live", costPerMinuteUSD: 0.017 },
+  { id: "aws-live", label: "AWS Transcribe (live)", mode: "live", costPerMinuteUSD: 0.024 },
   // azure-openai-live er IMPLEMENTERT (factory + /api/transcribe-token + live/azure-openai.ts)
   // men IKKE tilbudt i dropdownen: Azure OpenAI realtime-transkribering er region-/
   // deployment-skjør (type:transcription → 500, ingen gyldig transcribe-deployment i

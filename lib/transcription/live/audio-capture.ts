@@ -8,9 +8,11 @@
 
 export type AudioCapture = { stop: () => void };
 
+// Leverer hver bit som rå PCM16 LE-bytes. AWS streaming tar disse direkte; Azure OpenAI
+// base64-koder dem først (se bytesToBase64).
 export async function startPcmCapture(
   targetRate: number,
-  onChunk: (base64Pcm16: string) => void
+  onChunk: (pcm16: Uint8Array) => void
 ): Promise<AudioCapture> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   const AudioCtx =
@@ -26,7 +28,7 @@ export async function startPcmCapture(
     const input = e.inputBuffer.getChannelData(0);
     const down = downsample(input, ctx.sampleRate, targetRate);
     const pcm16 = floatToPcm16(down);
-    onChunk(base64FromBytes(new Uint8Array(pcm16.buffer)));
+    onChunk(new Uint8Array(pcm16.buffer));
   };
 
   source.connect(processor);
@@ -63,7 +65,7 @@ function floatToPcm16(input: Float32Array): Int16Array {
   return out;
 }
 
-function base64FromBytes(bytes: Uint8Array): string {
+export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);

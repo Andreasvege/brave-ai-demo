@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
+    "@aws-sdk/client-sts": "^3.1071.0",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/client": "^6.19.3",
     "@vercel/blob": "^2.4.0",

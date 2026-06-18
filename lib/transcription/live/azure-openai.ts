@@ -1,7 +1,7 @@
 "use client";
 
 import type { LiveTranscriber } from "../types";
-import { startPcmCapture, type AudioCapture } from "./audio-capture";
+import { startPcmCapture, bytesToBase64, type AudioCapture } from "./audio-capture";
 
 // Azure OpenAI Realtime live-transkribering (gpt-4o-transcribe).
 // Flyt: hent ephemeral nøkkel + ws-URL fra /api/transcribe-token/azure-openai →
@@ -42,9 +42,9 @@ export function createAzureOpenaiRealtimeLive(): LiveTranscriber {
         socket.onmessage = (ev) => handleMessage(ev);
       });
 
-      capture = await startPcmCapture(TARGET_RATE, (b64) => {
+      capture = await startPcmCapture(TARGET_RATE, (bytes) => {
         if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: b64 }));
+          ws.send(JSON.stringify({ type: "input_audio_buffer.append", audio: bytesToBase64(bytes) }));
         }
       });
     },

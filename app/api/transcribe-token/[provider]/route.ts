@@ -2,8 +2,9 @@
 // leverandør. Mønsteret speiler /api/speech-token (Azure Speech): serveren holder
 // API-nøkkelen, browseren får kun en kortlevd token og streamer lyden direkte.
 //
-// Foreløpig: azure-openai (Azure OpenAI Realtime, gpt-4o-transcribe).
-// aws-streaming kommer i egen runde.
+// azure-openai: Azure OpenAI Realtime (dvalemodus — ikke i dropdownen p.t.).
+// aws: kortlevde STS-credentials til browser-direkte AWS Transcribe streaming.
+import { STSClient, GetSessionTokenCommand } from "@aws-sdk/client-sts";
 
 export async function POST(
   _req: Request,
@@ -11,7 +12,38 @@ export async function POST(
 ) {
   const { provider } = await ctx.params;
   if (provider === "azure-openai") return azureOpenaiToken();
+  if (provider === "aws") return awsToken();
   return Response.json({ error: `Ukjent live-leverandør: ${provider}` }, { status: 404 });
+}
+
+async function awsToken() {
+  const region = process.env.AWS_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  if (!region || !accessKeyId || !secretAccessKey) {
+    return Response.json({ error: "AWS_REGION/ACCESS_KEY/SECRET mangler" }, { status: 500 });
+  }
+  try {
+    const sts = new STSClient({ region, credentials: { accessKeyId, secretAccessKey } });
+    // Kortlevde creds (15 min) som browseren bruker mot Transcribe streaming. Standard
+    // mønster; nøkkelen eksponeres aldri, og creds utløper raskt.
+    const out = await sts.send(new GetSessionTokenCommand({ DurationSeconds: 900 }));
+    const c = out.Credentials;
+    if (!c?.AccessKeyId || !c.SecretAccessKey || !c.SessionToken) {
+      return Response.json({ error: "STS ga ingen credentials" }, { status: 502 });
+    }
+    return Response.json({
+      region,
+      accessKeyId: c.AccessKeyId,
+      secretAccessKey: c.SecretAccessKey,
+      sessionToken: c.SessionToken,
+    });
+  } catch (e) {
+    return Response.json(
+      { error: `STS feilet: ${e instanceof Error ? e.message : String(e)}` },
+      { status: 502 }
+    );
+  }
 }
 
 async function azureOpenaiToken() {
