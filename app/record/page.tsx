@@ -9,6 +9,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { MicIcon, CheckIcon } from "@/components/icons";
 import { uploadAudio } from "@/lib/upload-audio";
 import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
+import { ModelSelect } from "@/components/model-select";
+import { getDefaultProvider, setDefaultProvider } from "@/lib/transcription/client";
+import type { ProviderId } from "@/lib/transcription/types";
 
 type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
@@ -28,6 +31,13 @@ const BATCH_STEPS: Step[] = [
 export default function RecordPage() {
   const router = useRouter();
   const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("batch");
+  const [provider, setProvider] = useState<ProviderId>(() => getDefaultProvider("batch"));
+
+  function chooseProvider(id: ProviderId) {
+    setProvider(id);
+    setDefaultProvider(transcribeMode, id);
+  }
+
   const [phase, setPhase] = useState<Phase>("idle");
   const [steps, setSteps] = useState<Step[]>(LIVE_STEPS);
   const [stepKey, setStepKey] = useState("ANALYZING");
@@ -295,6 +305,7 @@ export default function RecordPage() {
       const formData = new FormData();
       formData.append("audioUrl", audioUrl);
       formData.append("transcribeMode", mode);
+      formData.append("transcribeProvider", provider);
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
       await postAndNavigate(formData);
@@ -354,7 +365,7 @@ export default function RecordPage() {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => { if (!isRecording) setTranscribeMode(m); }}
+                  onClick={() => { if (!isRecording) { setTranscribeMode(m); setProvider(getDefaultProvider(m)); } }}
                   aria-pressed={transcribeMode === m}
                   disabled={isRecording}
                   className={`flex-1 rounded-[9px] py-1.5 text-sm font-medium transition-all disabled:opacity-40 ${
@@ -372,6 +383,13 @@ export default function RecordPage() {
                 ? "Transkriberes underveis — du ser teksten mens du snakker"
                 : "Transkriberes etter opptaket — høyere nøyaktighet"}
             </p>
+
+            <ModelSelect
+              mode={transcribeMode}
+              value={provider}
+              onChange={chooseProvider}
+              disabled={isRecording || phase === "connecting"}
+            />
 
             {/* Mikrofonknapp */}
             <button
