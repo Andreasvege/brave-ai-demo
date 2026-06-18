@@ -90,6 +90,11 @@ export function PipRecordContent({
 
     try {
       await submitRecordedBlob(blob, { durationSec });
+      // Hold PiP-vinduet oppe: nullstill til idle så det er klart for nytt
+      // opptak, i stedet for å lukke vinduet.
+      setSeconds(0);
+      setError(null);
+      setPhase("idle");
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Noe gikk galt");

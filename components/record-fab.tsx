@@ -146,8 +146,8 @@ export function RecordFab() {
       root.render(
         <PipRecordContent
           onDone={() => {
-            root.unmount();
-            pipWin.close();
+            // Hold PiP-vinduet oppe etter en ferdig samtale — oppdater bare
+            // samtalelista i hovedvinduet. Vinduet lukkes kun via X (onClose).
             router.refresh();
           }}
           onClose={() => {

@@ -2,10 +2,12 @@
 
 # Brave CallAI
 
-Transkribering og AI-analyse av cold calls. Dette er et reelt produkt — ikke en demo.
-Første målgruppe er selgerne i Brave, men arkitektur og beslutninger skal tas med tanke
-på at produktet kan selges eksternt. Større API- og skjemaendringer er velkomne når de
-gir bedre fundament.
+Transkribering og AI-analyse av cold calls. Dette repoet er **demo og research** — det
+ekte produktet bygges fra bunnen av senere (reframet 2026-06-17). Bruk dette som et
+utforsknings-/læringssteg: mindre forbedringer og eksperimenter er fint, men **store
+arkitekturomskrivinger hører hjemme i from-scratch-byggingen**, ikke her — dokumentér og
+parkér gode idéer for den runden. Produktambisjonen (Brave-selgere først, skalerbart for
+eksternt salg) gjelder fortsatt som *retning* for det fremtidige produktet.
 
 ## Stack
 - Next.js 16 (App Router, Turbopack) — les `node_modules/next/dist/docs/` ved tvil, se AGENTS.md
