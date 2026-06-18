@@ -15,8 +15,9 @@ model Call {
   id             String   @id @default(cuid())
   title          String?
   status         String   @default("RECORDED")
-  transcribeMode String?
-  outcome        String?
+  transcribeMode     String?
+  transcribeProvider String?
+  outcome            String?
   userId         String?
   teamId         String?
   audioUrl       String?
