@@ -3,7 +3,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 // Utsteder klient-token for direkte opplasting av lyd til Vercel Blob.
 // Klienten (record-side, PiP-widget, filopplasting) kaller dette via
 // `upload(..., { handleUploadUrl: "/api/calls/upload" })`. Ruten er beskyttet
-// av middleware (kun innloggede @brave.no-brukere).
+// av middleware (kun innloggede @thebrave.no-brukere).
 export async function POST(request: Request): Promise<Response> {
   const body = (await request.json()) as HandleUploadBody;
 

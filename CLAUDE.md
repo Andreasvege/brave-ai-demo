@@ -80,8 +80,10 @@ Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
   `transform`-animasjonen oppretter nytt stacking context og bryter `fixed`-posisjonering
 - Tidssone: hardkodet `Europe/Oslo` i `lib/format.ts` (`formatDate`)
 - CRM/kalender-API er ikke koblet til ennå, men arkitekturen skal gjøre det mulig
-- **Auth**: NextAuth.js v5 med Google OAuth. Kun `@brave.no`-adresser slipper inn.
-  Middleware beskytter alle ruter inkl. API-et.
+- **Auth**: NextAuth.js v5 med Google OAuth. Kun `@thebrave.no`-adresser slipper inn
+  (domenet er `thebrave.no`, ikke `brave.no`). Middleware beskytter alle ruter inkl. API-et.
+  NB: domene-restriksjonen håndheves p.t. KUN av OAuth-app-konfig + en eksplisitt sjekk i
+  `/api/transcribe-token` — `auth.ts` har ingen `signIn`-callback ennå.
 - **Delt tilgang**: Alle innloggede brukere ser og redigerer alle samtaler — bevisst
   design (teamverktøy). `userId`/`teamId` er i DB men ikke koblet til tilgangsstyring ennå.
   Kobles inn når produktet selges eksternt. IDOR-flagging er ikke relevant innenfor ett team.
