@@ -1,6 +1,8 @@
 import { get, put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
-import { transcribeAudio } from "@/lib/transcribe";
+import { dispatchBatch } from "@/lib/transcription/batch";
+import { providerById, DEFAULT_PROVIDER } from "@/lib/transcription/registry";
+import type { ProviderId } from "@/lib/transcription/types";
 import { analyzeTranscript } from "@/lib/analyze";
 
 export const maxDuration = 300;
@@ -20,6 +22,12 @@ export async function POST(request: Request) {
   const notes = (formData.get("notes") as string | null)?.trim() || null;
   const clientDuration = Number(formData.get("durationSec")) || null;
   const transcribeMode = (formData.get("transcribeMode") as string | null) || null;
+
+  const rawProvider = (formData.get("transcribeProvider") as string | null) || null;
+  const providerMeta = rawProvider ? providerById(rawProvider) : undefined;
+  // Falls back to the mode default if the client omitted/sent an unknown provider.
+  const transcribeProvider: ProviderId =
+    (providerMeta?.id as ProviderId) ?? DEFAULT_PROVIDER[transcribeMode === "live" ? "live" : "batch"];
 
   if (!(audio instanceof File) && !audioUrl && !liveTranscript) {
     return Response.json(
@@ -41,6 +49,7 @@ export async function POST(request: Request) {
       notes,
       durationSec: clientDuration,
       transcribeMode,
+      transcribeProvider,
       audioUrl: audioUrl ?? undefined,
     },
   });
@@ -82,7 +91,7 @@ export async function POST(request: Request) {
         filename = audioFile.name || "opptak.webm";
       }
 
-      const result = await transcribeAudio(audioBlob, filename);
+      const result = await dispatchBatch(transcribeProvider, audioBlob, filename);
       transcript = result.transcript;
       if (clientDuration == null && result.durationSec != null) {
         await prisma.call.update({
