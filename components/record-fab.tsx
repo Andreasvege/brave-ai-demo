@@ -9,6 +9,7 @@ import { MicIcon } from "@/components/icons";
 import { PipRecordContent } from "@/components/pip-record-content";
 import { submitRecordedBlob } from "@/lib/upload-audio";
 import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
+import { getDefaultProvider } from "@/lib/transcription/client";
 import { cn } from "@/lib/utils";
 
 type Phase = "idle" | "open" | "connecting" | "recording" | "processing" | "error";
@@ -36,7 +37,7 @@ export function RecordFab() {
         const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
         mediaRecorder.current = null;
         collectRecording(rec, audioChunks.current)
-          .then((blob) => submitRecordedBlob(blob, { durationSec }))
+          .then((blob) => submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") }))
           .catch((e) => console.error("FAB-nedriving: lagring av opptak feilet", e));
       } else {
         rec?.stream?.getTracks().forEach((t) => t.stop());
@@ -95,7 +96,7 @@ export function RecordFab() {
 
     setPhase("processing");
     try {
-      await submitRecordedBlob(blob, { durationSec });
+      await submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") });
       setPhase("idle");
       router.refresh();
     } catch (err) {

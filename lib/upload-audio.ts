@@ -27,7 +27,7 @@ export async function uploadAudio(
 // ikke fila inline). Delt av PiP-widgeten og FAB-en. Kaster ved feil.
 export async function submitRecordedBlob(
   blob: Blob,
-  opts: { durationSec?: number; notes?: string; transcribeMode?: string } = {}
+  opts: { durationSec?: number; notes?: string; transcribeMode?: string; transcribeProvider?: string } = {}
 ): Promise<{ id?: string; error?: string }> {
   const file = new File([blob], "opptak.webm", { type: blob.type });
   const audioUrl = await uploadAudio(file);
@@ -35,6 +35,7 @@ export async function submitRecordedBlob(
   const formData = new FormData();
   formData.append("audioUrl", audioUrl);
   formData.append("transcribeMode", opts.transcribeMode ?? "batch");
+  if (opts.transcribeProvider) formData.append("transcribeProvider", opts.transcribeProvider);
   formData.append("notes", opts.notes ?? "");
   if (opts.durationSec) formData.append("durationSec", String(opts.durationSec));
 

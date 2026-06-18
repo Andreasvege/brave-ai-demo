@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { submitRecordedBlob } from "@/lib/upload-audio";
 import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
+import { getDefaultProvider } from "@/lib/transcription/client";
 
 type Phase = "idle" | "connecting" | "recording" | "processing" | "error";
 
@@ -36,7 +37,7 @@ export function PipRecordContent({
         const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
         mediaRecorder.current = null;
         collectRecording(rec, audioChunks.current)
-          .then((blob) => submitRecordedBlob(blob, { durationSec }))
+          .then((blob) => submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") }))
           .catch((e) => console.error("PiP-nedriving: lagring av opptak feilet", e));
       } else {
         rec?.stream?.getTracks().forEach((t) => t.stop());
@@ -89,7 +90,7 @@ export function PipRecordContent({
     setPhase("processing");
 
     try {
-      await submitRecordedBlob(blob, { durationSec });
+      await submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") });
       // Hold PiP-vinduet oppe: nullstill til idle så det er klart for nytt
       // opptak, i stedet for å lukke vinduet.
       setSeconds(0);
