@@ -22,6 +22,12 @@ const LIVE_STEPS: Step[] = [
   { key: "ANALYZING", label: "Analyserer" },
   { key: "DONE", label: "Ferdig" },
 ];
+// Live med parallelt lydopptak: kort opplastingssteg før analysen.
+const LIVE_STEPS_WITH_AUDIO: Step[] = [
+  { key: "UPLOADING", label: "Laster opp" },
+  { key: "ANALYZING", label: "Analyserer" },
+  { key: "DONE", label: "Ferdig" },
+];
 const BATCH_STEPS: Step[] = [
   { key: "UPLOADING", label: "Laster opp" },
   { key: "TRANSCRIBING", label: "Transkriberer" },
@@ -121,6 +127,27 @@ export default function RecordPage() {
     await t.start();
     live.current = t;
 
+    // Ta også opp lyden parallelt så live-samtaler får lagret opptak. Best-effort:
+    // en feil her skal aldri velte selve live-transkripsjonen — da kjører live uten lyd.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const recorder = new MediaRecorder(stream);
+      audioChunks.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.current.push(e.data);
+      };
+      recorder.start(500);
+      mediaRecorder.current = recorder;
+      setNoAudio(false);
+      try {
+        micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+      } catch {
+        micMonitor.current = null;
+      }
+    } catch {
+      mediaRecorder.current = null; // lydopptak er valgfritt for live
+    }
+
     startedAt.current = Date.now();
     setSeconds(0);
     timer.current = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)), 1000);
@@ -170,13 +197,30 @@ export default function RecordPage() {
     if (!t) return;
     const { transcript } = await t.stop();
     live.current = null;
+
+    // Finaliser det parallelle lydopptaket (best-effort — uten lyd lagrer vi likevel teksten).
+    micMonitor.current?.stop();
+    micMonitor.current = null;
+    setNoAudio(false);
+    let audioFile: File | null = null;
+    const recorder = mediaRecorder.current;
+    if (recorder) {
+      try {
+        const blob = await collectRecording(recorder, audioChunks.current);
+        if (blob.size > 0) audioFile = new File([blob], "opptak.webm", { type: blob.type });
+      } catch {
+        audioFile = null;
+      }
+      mediaRecorder.current = null;
+    }
+
     const cleaned = transcript.replace(/\s+/g, " ").trim();
     if (!cleaned) {
       setError("Ingen tale ble gjenkjent — transkriptet er tomt.");
       setPhase("error");
       return;
     }
-    await submitLive(cleaned, Math.round((Date.now() - startedAt.current) / 1000));
+    await submitLive(cleaned, Math.round((Date.now() - startedAt.current) / 1000), audioFile);
   }
 
   async function stopBatch() {
@@ -198,6 +242,17 @@ export default function RecordPage() {
 
     if (transcribeMode === "live") {
       if (live.current) { await live.current.stop(); live.current = null; }
+      // Stopp også det parallelle lydopptaket og frigi mikrofonen.
+      const recorder = mediaRecorder.current;
+      if (recorder) {
+        recorder.stream.getTracks().forEach((track) => track.stop());
+        recorder.stop();
+        mediaRecorder.current = null;
+      }
+      micMonitor.current?.stop();
+      micMonitor.current = null;
+      setNoAudio(false);
+      audioChunks.current = [];
       phrasesRef.current = [];
       interimRef.current = "";
       setPhrases([]);
@@ -219,17 +274,33 @@ export default function RecordPage() {
     setPhase("idle");
   }
 
-  async function submitLive(transcript: string, durationSec: number) {
+  async function submitLive(
+    transcript: string,
+    durationSec: number,
+    audioFile: File | null
+  ) {
     setPhase("processing");
-    setSteps(LIVE_STEPS);
-    setStepKey("ANALYZING");
+    setSteps(audioFile ? LIVE_STEPS_WITH_AUDIO : LIVE_STEPS);
+    setStepKey(audioFile ? "UPLOADING" : "ANALYZING");
     try {
+      // Last opp lyden best-effort: feiler den, lagrer vi fortsatt transkriptet.
+      let audioUrl: string | null = null;
+      if (audioFile) {
+        try {
+          audioUrl = await uploadAudio(audioFile);
+        } catch {
+          audioUrl = null;
+        }
+        setStepKey("ANALYZING");
+      }
+
       const formData = new FormData();
       formData.append("transcript", transcript);
       formData.append("transcribeMode", "live");
       formData.append("transcribeProvider", provider);
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
+      if (audioUrl) formData.append("audioUrl", audioUrl);
       await postAndNavigate(formData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Noe gikk galt");
