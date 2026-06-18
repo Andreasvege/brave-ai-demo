@@ -5,7 +5,7 @@
 // azure-openai: Azure OpenAI Realtime (dvalemodus — ikke i dropdownen p.t.).
 // aws: kortlevde STS-credentials til browser-direkte AWS Transcribe streaming.
 //
-// Sikkerhet: ruten ligger bak auth-middleware (kun @brave.no slipper inn). Credsene
+// Sikkerhet: ruten ligger bak auth-middleware (kun @thebrave.no slipper inn). Credsene
 // scopes til KUN Transcribe streaming via GetFederationToken + inline policy — så en
 // browser-eksponert nøkkel ikke arver hele IAM-brukerens rettigheter.
 import { STSClient, GetFederationTokenCommand } from "@aws-sdk/client-sts";
@@ -33,12 +33,12 @@ export async function POST(
 ) {
   // Defense-in-depth: auth-middleware beskytter ruten allerede, men en credential-
   // utstedende rute skal aldri stole KUN på middleware-matcheren (som kan endres).
-  // Håndhev @brave.no-domenet eksplisitt her. (Den autoritative, ikke-spoofbare
+  // Håndhev @thebrave.no-domenet eksplisitt her. (Den autoritative, ikke-spoofbare
   // sjekken — Googles hd-claim i en signIn-callback — hører hjemme i auth.ts ved
   // rebuild; her holder e-post-suffikset med @-anker som lokal gate.)
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
-  if (!email || !email.endsWith("@brave.no")) {
+  if (!email || !email.endsWith("@thebrave.no")) {
     return Response.json({ error: "Ikke autorisert" }, { status: 401 });
   }
 
