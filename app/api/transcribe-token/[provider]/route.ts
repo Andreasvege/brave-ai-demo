@@ -4,7 +4,27 @@
 //
 // azure-openai: Azure OpenAI Realtime (dvalemodus — ikke i dropdownen p.t.).
 // aws: kortlevde STS-credentials til browser-direkte AWS Transcribe streaming.
-import { STSClient, GetSessionTokenCommand } from "@aws-sdk/client-sts";
+//
+// Sikkerhet: ruten ligger bak auth-middleware (kun @brave.no slipper inn). Credsene
+// scopes til KUN Transcribe streaming via GetFederationToken + inline policy — så en
+// browser-eksponert nøkkel ikke arver hele IAM-brukerens rettigheter.
+import { STSClient, GetFederationTokenCommand } from "@aws-sdk/client-sts";
+
+// Effektive rettigheter = snittet av denne policyen og IAM-brukerens egne. Begrenser
+// browser-credsene til kun å starte Transcribe streaming.
+const TRANSCRIBE_ONLY_POLICY = JSON.stringify({
+  Version: "2012-10-17",
+  Statement: [
+    {
+      Effect: "Allow",
+      Action: [
+        "transcribe:StartStreamTranscription",
+        "transcribe:StartStreamTranscriptionWebSocket",
+      ],
+      Resource: "*",
+    },
+  ],
+});
 
 export async function POST(
   _req: Request,
@@ -25,9 +45,15 @@ async function awsToken() {
   }
   try {
     const sts = new STSClient({ region, credentials: { accessKeyId, secretAccessKey } });
-    // Kortlevde creds (15 min) som browseren bruker mot Transcribe streaming. Standard
-    // mønster; nøkkelen eksponeres aldri, og creds utløper raskt.
-    const out = await sts.send(new GetSessionTokenCommand({ DurationSeconds: 900 }));
+    // Kortlevde creds (15 min) scopet til kun Transcribe streaming. Name gir attribusjon
+    // i CloudTrail. GetFederationToken krever at IAM-brukeren har sts:GetFederationToken.
+    const out = await sts.send(
+      new GetFederationTokenCommand({
+        Name: "brave-callai-live",
+        DurationSeconds: 900,
+        Policy: TRANSCRIBE_ONLY_POLICY,
+      })
+    );
     const c = out.Credentials;
     if (!c?.AccessKeyId || !c.SecretAccessKey || !c.SessionToken) {
       return Response.json({ error: "STS ga ingen credentials" }, { status: 502 });
