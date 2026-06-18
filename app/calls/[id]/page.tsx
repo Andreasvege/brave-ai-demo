@@ -6,7 +6,7 @@ import { formatDuration, formatDate } from "@/lib/format";
 import { Card, CardAccentHeader, CardContent, Kicker } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { OutcomeBadge, StatusBadge } from "@/components/call-badges";
+import { OutcomeBadge, ProviderBadge, StatusBadge } from "@/components/call-badges";
 import { CopyButton, EditableTitle, ReanalyzeButton } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +67,7 @@ export default async function CallDetailPage(props: PageProps<"/calls/[id]">) {
         ) : (
           <StatusBadge status={call.status} />
         )}
+        <ProviderBadge providerId={call.transcribeProvider} />
         {call.transcribeMode && (
           <Badge tone="neutral" size="lg">
             {call.transcribeMode === "live"

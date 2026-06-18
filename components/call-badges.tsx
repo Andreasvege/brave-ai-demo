@@ -1,4 +1,5 @@
 import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { providerById } from "@/lib/transcription/registry";
 
 const OUTCOMES: Record<string, { label: string; tone: BadgeProps["tone"] }> = {
   booked_meeting: { label: "Møte booket", tone: "green" },
@@ -24,4 +25,10 @@ export function StatusBadge({ status }: { status: string }) {
   const s = STATUSES[status];
   if (!s) return null;
   return <Badge tone={s.tone}>{s.label}</Badge>;
+}
+
+export function ProviderBadge({ providerId }: { providerId: string | null }) {
+  const meta = providerId ? providerById(providerId) : undefined;
+  if (!meta) return null;
+  return <Badge tone="neutral">{meta.label}</Badge>;
 }
