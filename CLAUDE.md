@@ -66,6 +66,9 @@ Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
   pipelinen. `monitorMicLevel()` (Web Audio nivåmåling) gir sanntids «ingen lyd»-varsel. Tre
   opptaksflater deler mønsteret — `/record`, FAB (`record-fab.tsx`) og PiP (`pip-record-content.tsx`)
   — endre alle tre samtidig. PiP rendrer i eget dokument → inline styles, ikke Tailwind-klasser.
+  **PiP holdes oppe etter ferdig samtale:** `onDone` lukker IKKE vinduet (bare `router.refresh()`),
+  og `PipRecordContent` nullstiller seg til `idle` etter opplasting → klart for nytt opptak. Vinduet
+  lukkes kun via X-knappen (`onClose`).
 
 ## Konvensjoner
 - Alt UI på norsk; lys Linear-estetikk, designtokens i `app/globals.css`, aksent #3a5c28
