@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SpeechRecognizer } from "microsoft-cognitiveservices-speech-sdk";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -12,6 +11,8 @@ import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/r
 import { ModelSelect } from "@/components/model-select";
 import { getDefaultProvider, setDefaultProvider } from "@/lib/transcription/client";
 import type { ProviderId } from "@/lib/transcription/types";
+import { createLiveTranscriber } from "@/lib/transcription/live";
+import type { LiveTranscriber } from "@/lib/transcription/types";
 
 type TranscribeMode = "live" | "batch";
 type Phase = "idle" | "connecting" | "recording" | "processing" | "done" | "error";
@@ -52,7 +53,7 @@ export default function RecordPage() {
   const [interim, setInterim] = useState("");
   const phrasesRef = useRef<string[]>([]);
   const interimRef = useRef("");
-  const recognizer = useRef<SpeechRecognizer | null>(null);
+  const live = useRef<LiveTranscriber | null>(null);
 
   // Batch-opptak
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -72,7 +73,7 @@ export default function RecordPage() {
     return () => {
       if (timer.current) clearInterval(timer.current);
       if (poller.current) clearInterval(poller.current);
-      recognizer.current?.close();
+      live.current?.stop();
       mediaRecorder.current?.stop();
       micMonitor.current?.stop();
     };
@@ -103,50 +104,26 @@ export default function RecordPage() {
   }
 
   async function startLive() {
-    const tokenRes = await fetch("/api/speech-token", { method: "POST" });
-    const { token, region, error: tokenError } = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(tokenError || "Kunne ikke hente taletoken");
-
-    const sdk = await import("microsoft-cognitiveservices-speech-sdk");
-    const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
-    speechConfig.speechRecognitionLanguage = "nb-NO";
-    const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-    const rec = new sdk.SpeechRecognizer(speechConfig, audioConfig);
-
-    rec.recognizing = (_s, e) => {
-      interimRef.current = e.result.text;
-      setInterim(e.result.text);
-    };
-    rec.recognized = (_s, e) => {
-      if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text) {
-        phrasesRef.current = [...phrasesRef.current, e.result.text];
-        setPhrases(phrasesRef.current);
-      }
+    const t = createLiveTranscriber(provider);
+    t.onPartial = (text) => { interimRef.current = text; setInterim(text); };
+    t.onFinal = (text) => {
+      phrasesRef.current = [...phrasesRef.current, text];
+      setPhrases(phrasesRef.current);
       interimRef.current = "";
       setInterim("");
     };
-    rec.canceled = (_s, e) => {
-      if (e.reason === sdk.CancellationReason.Error) {
-        setError(`Transkribering avbrutt: ${e.errorDetails}`);
-        setPhase("error");
-      }
-    };
+    t.onError = (err) => { setError(`Transkribering avbrutt: ${err.message}`); setPhase("error"); };
 
-    await new Promise<void>((resolve, reject) =>
-      rec.startContinuousRecognitionAsync(resolve, reject)
-    );
-
-    recognizer.current = rec;
     phrasesRef.current = [];
     interimRef.current = "";
     setPhrases([]);
     setInterim("");
+    await t.start();
+    live.current = t;
+
     startedAt.current = Date.now();
     setSeconds(0);
-    timer.current = setInterval(
-      () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
-      1000
-    );
+    timer.current = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)), 1000);
     setPhase("recording");
   }
 
@@ -189,25 +166,17 @@ export default function RecordPage() {
   }
 
   async function stopLive() {
-    const rec = recognizer.current;
-    if (!rec) return;
-
-    await new Promise<void>((resolve) =>
-      rec.stopContinuousRecognitionAsync(resolve, () => resolve())
-    );
-    rec.close();
-    recognizer.current = null;
-
-    const transcript = [...phrasesRef.current, interimRef.current]
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!transcript) {
+    const t = live.current;
+    if (!t) return;
+    const { transcript } = await t.stop();
+    live.current = null;
+    const cleaned = transcript.replace(/\s+/g, " ").trim();
+    if (!cleaned) {
       setError("Ingen tale ble gjenkjent — transkriptet er tomt.");
       setPhase("error");
       return;
     }
-    await submitLive(transcript, Math.round((Date.now() - startedAt.current) / 1000));
+    await submitLive(cleaned, Math.round((Date.now() - startedAt.current) / 1000));
   }
 
   async function stopBatch() {
@@ -228,14 +197,7 @@ export default function RecordPage() {
     if (timer.current) clearInterval(timer.current);
 
     if (transcribeMode === "live") {
-      const rec = recognizer.current;
-      if (rec) {
-        await new Promise<void>((resolve) =>
-          rec.stopContinuousRecognitionAsync(resolve, () => resolve())
-        );
-        rec.close();
-        recognizer.current = null;
-      }
+      if (live.current) { await live.current.stop(); live.current = null; }
       phrasesRef.current = [];
       interimRef.current = "";
       setPhrases([]);
@@ -265,6 +227,7 @@ export default function RecordPage() {
       const formData = new FormData();
       formData.append("transcript", transcript);
       formData.append("transcribeMode", "live");
+      formData.append("transcribeProvider", provider);
       formData.append("notes", notes);
       if (durationSec) formData.append("durationSec", String(durationSec));
       await postAndNavigate(formData);
