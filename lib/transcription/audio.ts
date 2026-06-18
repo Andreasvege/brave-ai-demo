@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import ffmpegPath from "ffmpeg-static";
@@ -10,17 +10,21 @@ const SAMPLE_RATE = 16000;
 export async function blobToPcm(audio: Blob): Promise<{ pcm: Buffer; sampleRate: number }> {
   if (!ffmpegPath) throw new Error("ffmpeg-static fant ingen binærfil");
   const dir = mkdtempSync(join(tmpdir(), "stt-"));
-  const inPath = join(dir, "in");
-  const outPath = join(dir, "out.wav");
-  writeFileSync(inPath, Buffer.from(await audio.arrayBuffer()));
-  const res = spawnSync(
-    ffmpegPath,
-    ["-i", inPath, "-ar", String(SAMPLE_RATE), "-ac", "1", "-sample_fmt", "s16", "-y", outPath],
-    { encoding: "utf-8" }
-  );
-  if (res.status !== 0) throw new Error(`ffmpeg feilet: ${res.stderr?.slice(0, 500)}`);
-  const wav = readFileSync(outPath);
-  return { pcm: wav.subarray(44), sampleRate: SAMPLE_RATE }; // drop 44-byte WAV header
+  try {
+    const inPath = join(dir, "in");
+    const outPath = join(dir, "out.wav");
+    writeFileSync(inPath, Buffer.from(await audio.arrayBuffer()));
+    const res = spawnSync(
+      ffmpegPath,
+      ["-i", inPath, "-ar", String(SAMPLE_RATE), "-ac", "1", "-sample_fmt", "s16", "-y", outPath],
+      { encoding: "utf-8" }
+    );
+    if (res.status !== 0) throw new Error(`ffmpeg feilet: ${res.stderr?.slice(0, 500)}`);
+    const wav = readFileSync(outPath);
+    return { pcm: wav.subarray(44), sampleRate: SAMPLE_RATE }; // drop 44-byte WAV header
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export function chunkBuffer(buf: Buffer, chunkBytes = 16000 * 2 / 10): Buffer[] {

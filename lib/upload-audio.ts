@@ -35,7 +35,7 @@ export async function submitRecordedBlob(
   const formData = new FormData();
   formData.append("audioUrl", audioUrl);
   formData.append("transcribeMode", opts.transcribeMode ?? "batch");
-  if (opts.transcribeProvider) formData.append("transcribeProvider", opts.transcribeProvider);
+  if (opts.transcribeProvider != null) formData.append("transcribeProvider", opts.transcribeProvider);
   formData.append("notes", opts.notes ?? "");
   if (opts.durationSec) formData.append("durationSec", String(opts.durationSec));
 

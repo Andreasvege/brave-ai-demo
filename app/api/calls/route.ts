@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const providerMeta = rawProvider ? providerById(rawProvider) : undefined;
   // Falls back to the mode default if the client omitted/sent an unknown provider.
   const transcribeProvider: ProviderId =
-    (providerMeta?.id as ProviderId) ?? DEFAULT_PROVIDER[transcribeMode === "live" ? "live" : "batch"];
+    providerMeta?.id ?? DEFAULT_PROVIDER[transcribeMode === "live" ? "live" : "batch"];
 
   if (!(audio instanceof File) && !audioUrl && !liveTranscript) {
     return Response.json(
