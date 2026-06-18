@@ -9,6 +9,7 @@
 // scopes til KUN Transcribe streaming via GetFederationToken + inline policy — så en
 // browser-eksponert nøkkel ikke arver hele IAM-brukerens rettigheter.
 import { STSClient, GetFederationTokenCommand } from "@aws-sdk/client-sts";
+import { auth } from "@/auth";
 
 // Effektive rettigheter = snittet av denne policyen og IAM-brukerens egne. Begrenser
 // browser-credsene til kun å starte Transcribe streaming.
@@ -30,6 +31,14 @@ export async function POST(
   _req: Request,
   ctx: RouteContext<"/api/transcribe-token/[provider]">
 ) {
+  // Defense-in-depth: auth-middleware beskytter ruten allerede, men en credential-
+  // utstedende rute skal aldri stole KUN på middleware-matcheren (som kan endres).
+  // Sjekk sesjonen eksplisitt her også.
+  const session = await auth();
+  if (!session?.user) {
+    return Response.json({ error: "Ikke autorisert" }, { status: 401 });
+  }
+
   const { provider } = await ctx.params;
   if (provider === "azure-openai") return azureOpenaiToken();
   if (provider === "aws") return awsToken();
