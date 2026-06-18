@@ -1,11 +1,11 @@
 import type { LiveTranscriber, ProviderId } from "../types";
 import { createAzureSpeechLive } from "./azure-speech";
-import { createAzureOpenaiRealtimeLive } from "./azure-openai";
+import { createOpenaiRealtimeLive } from "./openai";
 import { createAwsStreamingLive } from "./aws";
 
 const LIVE: Partial<Record<ProviderId, () => LiveTranscriber>> = {
   "azure-live": createAzureSpeechLive,
-  "azure-openai-live": createAzureOpenaiRealtimeLive,
+  "openai-live": createOpenaiRealtimeLive,
   "aws-live": createAwsStreamingLive,
 };
 

@@ -2,10 +2,10 @@ export type TranscribeMode = "batch" | "live";
 
 export type ProviderId =
   | "azure-batch"
-  | "azure-openai-batch"
+  | "openai-batch"
   | "aws-batch"
   | "azure-live"
-  | "azure-openai-live"
+  | "openai-live"
   | "aws-live";
 
 export type ProviderMeta = {

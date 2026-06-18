@@ -32,18 +32,19 @@ eksternt salg) gjelder fortsatt som *retning* for det fremtidige produktet.
     base-MIME (strip `;codecs=opus`) — MediaRecorder-typen matcher ellers ikke `allowedContentTypes`.
 - Nøkler i `.env.local`: AZURE_SPEECH_KEY/REGION, ANTHROPIC_API_KEY, AUTH_SECRET,
   GOOGLE_CLIENT_ID/SECRET, POSTGRES_PRISMA_URL, DATABASE_URL_UNPOOLED, BLOB_READ_WRITE_TOKEN,
-  AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION, AZURE_OPENAI_ENDPOINT/KEY/TRANSCRIBE_DEPLOYMENT
+  AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION,
+  OPENAI_API_KEY (direkte OpenAI-transkribering; MÅ også inn i Vercel-env Prod+Preview)
 
 ## Transkripsjonsleverandører
 Velgbar modell på `/record` (egen dropdown for batch og live). Kilde til sannhet:
 `lib/transcription/registry.ts` — **ren data, MÅ være import-trygg for både server og klient**
 (ingen provider-impl-imports, ingen `fs`/SDK/browser-globals).
 - **Batch** (server, `lib/transcription/batch/`): `dispatchBatch(id, blob, filename)`. Leverandører:
-  `azure-batch` (Fast Transcription), `azure-openai-batch` (gpt-4o-transcribe via `AzureOpenAI`-SDK),
+  `azure-batch` (Fast Transcription), `openai-batch` (gpt-4o-transcribe via direkte `OpenAI`-SDK),
   `aws-batch` (ffmpeg-static → 16k PCM → Transcribe streaming-collect, **ikke** ekte S3-batch).
 - **Live** (klient, `lib/transcription/live/`): `LiveTranscriber`-interface + `createLiveTranscriber(id)`.
-  `azure-live` (Speech SDK), `aws-live` (browser-streaming m/ STS-creds). `azure-openai-live` er
-  implementert men **holdt tilbake** fra registry (se gotcha).
+  `azure-live` (Speech SDK), `openai-live` (OpenAI Realtime direkte, `gpt-realtime-whisper` — natively
+  streaming; token via `/api/transcribe-token/openai`), `aws-live` (browser-streaming m/ STS-creds).
 - **Valg lagres**: `Call.transcribeProvider` + `<ModelSelect>`/`getDefaultProvider` (localStorage);
   FAB/PiP arver siste valg; `ProviderBadge` på detaljsiden.
 - **`POST /api/transcribe-token/[provider]`**: kortlevde live-creds (speiler `/api/speech-token`).
@@ -53,10 +54,10 @@ Velgbar modell på `/record` (egen dropdown for batch og live). Kilde til sannhe
   Før lagret kun batch lyden.
 
 **Gotchas:**
-- **Azure OpenAI krever gyldig `gpt-4o-transcribe`-deployment i støttet region** (Sweden Central/
-  East US 2 — **ikke** EU-regionen vi har nå). Mangler → 404 «deployment does not exist» på BÅDE
-  batch og realtime; realtime `type:transcription` gir dessuten 500. Derfor er azure-openai-live
-  holdt tilbake og azure-openai-batch feiler til deployment fikses.
+- **Azure OpenAI er FJERNET** (2026-06-18): `azure-openai-batch`/`-live` fungerte aldri fordi
+  vår Azure-ressurs lå i EU-regionen uten gyldig `gpt-4o-transcribe`-deployment (404/500). Erstattet
+  av direkte OpenAI (`openai-batch`/`openai-live`) som ikke avhenger av Azure-deployment/region.
+  STT-eval-harnessen (`scripts/eval-transcription/`) har fortsatt en Azure OpenAI-modul — egen sak.
 - **AWS batch trenger PCM** → `lib/transcription/audio.ts` bruker `ffmpeg-static` (16k mono).
 - Klang.ai vurdert + forkastet: callback/møte-bot-orientert API, ingen brukbar batch-transcribe-fra-lyd.
 

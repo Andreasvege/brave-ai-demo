@@ -2,7 +2,7 @@
 // leverandør. Mønsteret speiler /api/speech-token (Azure Speech): serveren holder
 // API-nøkkelen, browseren får kun en kortlevd token og streamer lyden direkte.
 //
-// azure-openai: Azure OpenAI Realtime (dvalemodus — ikke i dropdownen p.t.).
+// openai: OpenAI Realtime transkribering (direkte mot api.openai.com).
 // aws: kortlevde STS-credentials til browser-direkte AWS Transcribe streaming.
 //
 // Sikkerhet: ruten ligger bak auth-middleware (kun @thebrave.no slipper inn). Credsene
@@ -43,7 +43,7 @@ export async function POST(
   }
 
   const { provider } = await ctx.params;
-  if (provider === "azure-openai") return azureOpenaiToken();
+  if (provider === "openai") return openaiToken();
   if (provider === "aws") return awsToken();
   return Response.json({ error: `Ukjent live-leverandør: ${provider}` }, { status: 404 });
 }
@@ -84,30 +84,28 @@ async function awsToken() {
   }
 }
 
-async function azureOpenaiToken() {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const key = process.env.AZURE_OPENAI_KEY;
-  const deployment = process.env.AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT;
-  if (!endpoint || !key || !deployment) {
-    return Response.json(
-      { error: "AZURE_OPENAI_ENDPOINT/AZURE_OPENAI_KEY/AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT mangler" },
-      { status: 500 }
-    );
-  }
-  const base = endpoint.replace(/\/$/, "");
+// Direkte OpenAI Realtime (api.openai.com): minter ephemeral client_secret med Bearer-auth.
+// Modell: gpt-realtime-whisper (natively streaming). Server-siden er verifisert (HTTP 200,
+// nøkkel i .value); verifiser browser-benet: at intent=transcription-WS godtar nøkkelen via
+// subprotocol.
+const OPENAI_REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL ?? "gpt-realtime-whisper";
 
-  // GA-endepunkt for ephemeral realtime-credentials (ingen api-version).
-  // Sesjonen settes opp som transkribering med rå PCM-input @ 24 kHz.
-  const res = await fetch(`${base}/openai/v1/realtime/client_secrets`, {
+async function openaiToken() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    return Response.json({ error: "OPENAI_API_KEY mangler" }, { status: 500 });
+  }
+
+  const res = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
     method: "POST",
-    headers: { "api-key": key, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       session: {
         type: "transcription",
         audio: {
           input: {
             format: { type: "audio/pcm", rate: 24000 },
-            transcription: { model: deployment, language: "no" },
+            transcription: { model: OPENAI_REALTIME_MODEL, language: "no" },
           },
         },
       },
@@ -116,7 +114,7 @@ async function azureOpenaiToken() {
 
   if (!res.ok) {
     return Response.json(
-      { error: `Azure realtime token ${res.status}: ${(await res.text()).slice(0, 300)}` },
+      { error: `OpenAI realtime token ${res.status}: ${(await res.text()).slice(0, 300)}` },
       { status: 502 }
     );
   }
@@ -125,12 +123,11 @@ async function azureOpenaiToken() {
     value?: string;
     client_secret?: { value?: string };
   };
-  // GA returnerer { value, ... }; preview returnerte { client_secret: { value } }.
   const ephemeralKey = data.value ?? data.client_secret?.value;
   if (!ephemeralKey) {
-    return Response.json({ error: "Fikk ingen ephemeral nøkkel fra Azure" }, { status: 502 });
+    return Response.json({ error: "Fikk ingen ephemeral nøkkel fra OpenAI" }, { status: 502 });
   }
 
-  const wsUrl = `${base.replace(/^https/, "wss")}/openai/v1/realtime?intent=transcription`;
+  const wsUrl = "wss://api.openai.com/v1/realtime?intent=transcription";
   return Response.json({ ephemeralKey, wsUrl });
 }
