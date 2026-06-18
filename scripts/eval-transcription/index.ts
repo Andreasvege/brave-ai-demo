@@ -3,13 +3,14 @@ import { join, extname } from "node:path";
 import { toWav, wavDurationSec } from "./audio";
 import { writeReport, writeSummary } from "./report";
 import { azure } from "./providers/azure";
+import { azureOpenai } from "./providers/azure-openai";
 import { aws } from "./providers/aws";
 import { google } from "./providers/google";
 import { openai } from "./providers/openai";
 import { deepgram } from "./providers/deepgram";
 import type { ProviderModule, ProviderReport, FileEvaluation } from "./types";
 
-const providers: ProviderModule[] = [azure, aws, google, openai, deepgram];
+const providers: ProviderModule[] = [azure, azureOpenai, aws, google, openai, deepgram];
 
 const AUDIO_EXT = new Set([
   ".m4a", ".webm", ".wav", ".mp3", ".ogg", ".flac", ".aac", ".mp4",
