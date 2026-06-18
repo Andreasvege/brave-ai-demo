@@ -33,9 +33,12 @@ export async function POST(
 ) {
   // Defense-in-depth: auth-middleware beskytter ruten allerede, men en credential-
   // utstedende rute skal aldri stole KUN på middleware-matcheren (som kan endres).
-  // Sjekk sesjonen eksplisitt her også.
+  // Håndhev @brave.no-domenet eksplisitt her. (Den autoritative, ikke-spoofbare
+  // sjekken — Googles hd-claim i en signIn-callback — hører hjemme i auth.ts ved
+  // rebuild; her holder e-post-suffikset med @-anker som lokal gate.)
   const session = await auth();
-  if (!session?.user) {
+  const email = session?.user?.email?.toLowerCase();
+  if (!email || !email.endsWith("@brave.no")) {
     return Response.json({ error: "Ikke autorisert" }, { status: 401 });
   }
 
