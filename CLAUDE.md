@@ -16,10 +16,11 @@ eksternt salg) gjelder fortsatt som *retning* for det fremtidige produktet.
   Build-scriptet kjører `prisma generate && next build` for Vercel-kompatibilitet.
   **Bruk `prisma db push` for skjemaendringer** — `prisma migrate dev` feiler pga. drift
   i migrasjonshistorikken.
-- Azure Speech, westeurope, nb-NO — to veier fra mikrofon:
-  - **Batch-opptak** (standard, venstre fane): MediaRecorder → webm → Azure fast transcription
-  - **Live**: Azure Speech SDK i nettleseren, token fra `POST /api/speech-token`
-  - **Filopplasting**: samme som batch, api-version **2025-10-15** (`lib/transcribe.ts`)
+- **Transkribering er multi-leverandør** (se «## Transkripsjonsleverandører»). All STT-kode
+  ligger nå i `lib/transcription/` — `lib/transcribe.ts` er **SLETTET**. Azure Speech (nb-NO,
+  fast transcription api-version **2025-10-15**) er standard for både batch og live.
+  - **Batch** (standard): server-side dispatcher. **Live**: browser-side; token fra
+    `POST /api/speech-token` (Azure) eller `POST /api/transcribe-token/[provider]` (AWS m.fl.)
 - Claude `claude-sonnet-4-5` for analyse (`lib/analyze.ts`) — returnerer `Analysis`-objekt.
   `analyzeTranscript(transcript, notes, extraContext?)` — extraContext brukes ved re-analyse.
 - **Vercel Blob** (`@vercel/blob`) — private lydfillagring. **VIKTIG: send alltid tokenet
@@ -30,14 +31,42 @@ eksternt salg) gjelder fortsatt som *retning* for det fremtidige produktet.
   - Client upload (`upload()`) støtter `access: "private"`. Normaliser contentType til
     base-MIME (strip `;codecs=opus`) — MediaRecorder-typen matcher ellers ikke `allowedContentTypes`.
 - Nøkler i `.env.local`: AZURE_SPEECH_KEY/REGION, ANTHROPIC_API_KEY, AUTH_SECRET,
-  GOOGLE_CLIENT_ID/SECRET, POSTGRES_PRISMA_URL, DATABASE_URL_UNPOOLED, BLOB_READ_WRITE_TOKEN
+  GOOGLE_CLIENT_ID/SECRET, POSTGRES_PRISMA_URL, DATABASE_URL_UNPOOLED, BLOB_READ_WRITE_TOKEN,
+  AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY/REGION, AZURE_OPENAI_ENDPOINT/KEY/TRANSCRIBE_DEPLOYMENT
+
+## Transkripsjonsleverandører
+Velgbar modell på `/record` (egen dropdown for batch og live). Kilde til sannhet:
+`lib/transcription/registry.ts` — **ren data, MÅ være import-trygg for både server og klient**
+(ingen provider-impl-imports, ingen `fs`/SDK/browser-globals).
+- **Batch** (server, `lib/transcription/batch/`): `dispatchBatch(id, blob, filename)`. Leverandører:
+  `azure-batch` (Fast Transcription), `azure-openai-batch` (gpt-4o-transcribe via `AzureOpenAI`-SDK),
+  `aws-batch` (ffmpeg-static → 16k PCM → Transcribe streaming-collect, **ikke** ekte S3-batch).
+- **Live** (klient, `lib/transcription/live/`): `LiveTranscriber`-interface + `createLiveTranscriber(id)`.
+  `azure-live` (Speech SDK), `aws-live` (browser-streaming m/ STS-creds). `azure-openai-live` er
+  implementert men **holdt tilbake** fra registry (se gotcha).
+- **Valg lagres**: `Call.transcribeProvider` + `<ModelSelect>`/`getDefaultProvider` (localStorage);
+  FAB/PiP arver siste valg; `ProviderBadge` på detaljsiden.
+- **`POST /api/transcribe-token/[provider]`**: kortlevde live-creds (speiler `/api/speech-token`).
+  AWS = `GetFederationToken` scopet til Transcribe (krever IAM `sts:GetFederationToken`); ruten er
+  auth + `@thebrave.no`-gated i handleren. Dep: `@aws-sdk/client-sts`.
+- **Live lagrer nå lyd**: parallell `MediaRecorder` i `startLive` → `uploadAudio` (best-effort).
+  Før lagret kun batch lyden.
+
+**Gotchas:**
+- **Azure OpenAI krever gyldig `gpt-4o-transcribe`-deployment i støttet region** (Sweden Central/
+  East US 2 — **ikke** EU-regionen vi har nå). Mangler → 404 «deployment does not exist» på BÅDE
+  batch og realtime; realtime `type:transcription` gir dessuten 500. Derfor er azure-openai-live
+  holdt tilbake og azure-openai-batch feiler til deployment fikses.
+- **AWS batch trenger PCM** → `lib/transcription/audio.ts` bruker `ffmpeg-static` (16k mono).
+- Klang.ai vurdert + forkastet: callback/møte-bot-orientert API, ingen brukbar batch-transcribe-fra-lyd.
 
 ## Databaseskjema (Call)
 `analysis` er **JSONB** (`Json?` i Prisma) — ikke lenger en streng. Ikke bruk
 `JSON.parse`/`JSON.stringify`. Cast med `call.analysis as Analysis | null` i TypeScript.
 
-Nåværende felt: `id`, `title`, `status`, `transcribeMode`, `outcome`, `userId`, `teamId`,
-`audioUrl`, `durationSec`, `notes`, `transcript`, `analysis`, `error`, `createdAt`
+Nåværende felt: `id`, `title`, `status`, `transcribeMode`, `transcribeProvider`, `outcome`,
+`userId`, `teamId`, `audioUrl`, `durationSec`, `notes`, `transcript`, `analysis`, `error`, `createdAt`
+(`transcribeProvider` = valgt leverandør-id, f.eks. `azure-batch`/`aws-live`; se transkripsjonsseksjonen)
 
 Status-verdier: `RECORDED → TRANSCRIBING → ANALYZING → DONE / FAILED`
 
