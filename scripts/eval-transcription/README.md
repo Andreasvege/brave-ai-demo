@@ -32,6 +32,21 @@ Streaming mates i **sanntid** (100ms per 100ms-chunk), så hver streaming-kjøri
 tar omtrent like lang tid som lydfilen. Det gir gyldig TTF og fullstendige
 transkripter (rask mating kuttet halen). Forventet for et verktøy som kjøres sjelden.
 
+## Bare live-transkriptene (`eval-live`)
+
+Slank variant: mat inn **én** lydfil, få de tre **live**-transkriptene (Azure,
+AWS, OpenAI Realtime) rett i terminalen — ingen scoring, pris eller rapportfiler.
+
+```bash
+npm run eval-live lydopptak/testopptak1.m4a
+```
+
+Speiler appens live-leverandører: Azure Speech SDK, AWS Transcribe streaming og
+OpenAI Realtime (`gpt-realtime-whisper`, via WebSocket mot api.openai.com — samme
+ephemeral-key + subprotokoll som browser-impl, men kjørt fra Node). Azure/AWS
+streamer 16 kHz PCM, OpenAI krever 24 kHz; runneren lager begge WAV-variantene.
+Overstyr realtime-modellen med `OPENAI_REALTIME_MODEL`.
+
 ## Resultat
 
 Skrives til `eval-results/<dato>/report.md` (lesbar) og `raw.json` (rådata).

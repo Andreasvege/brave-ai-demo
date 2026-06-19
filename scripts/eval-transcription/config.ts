@@ -17,10 +17,4 @@ export const env = {
   googleCredentials: opt("GOOGLE_APPLICATION_CREDENTIALS"),
   openaiKey: opt("OPENAI_API_KEY"),
   deepgramKey: opt("DEEPGRAM_API_KEY"),
-  // Azure OpenAI = egen ressurs (ikke Azure Speech). Trenger endpoint + key +
-  // navnet på modell-deploymenten (f.eks. en gpt-4o-transcribe-deployment).
-  azureOpenaiEndpoint: opt("AZURE_OPENAI_ENDPOINT"),
-  azureOpenaiKey: opt("AZURE_OPENAI_KEY"),
-  azureOpenaiDeployment: opt("AZURE_OPENAI_TRANSCRIBE_DEPLOYMENT"),
-  azureOpenaiApiVersion: opt("AZURE_OPENAI_API_VERSION"),
 };

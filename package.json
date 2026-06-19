@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "eval-transcribe": "tsx scripts/eval-transcription/index.ts",
+    "eval-live": "tsx scripts/eval-transcription/live-compare.ts",
     "eval-score": "tsx scripts/eval-transcription/score.ts"
   },
   "dependencies": {

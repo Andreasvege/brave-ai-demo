@@ -57,7 +57,15 @@ Velgbar modell på `/record` (egen dropdown for batch og live). Kilde til sannhe
 - **Azure OpenAI er FJERNET** (2026-06-18): `azure-openai-batch`/`-live` fungerte aldri fordi
   vår Azure-ressurs lå i EU-regionen uten gyldig `gpt-4o-transcribe`-deployment (404/500). Erstattet
   av direkte OpenAI (`openai-batch`/`openai-live`) som ikke avhenger av Azure-deployment/region.
-  STT-eval-harnessen (`scripts/eval-transcription/`) har fortsatt en Azure OpenAI-modul — egen sak.
+  STT-eval-harnessens Azure OpenAI-modul er nå også slettet (2026-06-19).
+- **OpenAI (direkte):** live = `gpt-realtime-whisper` (natively streaming), batch = `gpt-4o-transcribe`.
+  Overstyr uten kodeendring med `OPENAI_REALTIME_MODEL` / `OPENAI_TRANSCRIBE_MODEL`. Token-ruten
+  (`openaiToken`) er verifisert ekte mot OpenAI (HTTP 200, ephemeral nøkkel i `.value`). **WS-
+  benet** (subprotocol-handshake + delta/completed-events) er nå verifisert ende-til-ende mot ekte
+  OpenAI med lyd via `npm run eval-live` (Node, ikke nettleser-mikrofon — men samme protokoll: ephemeral
+  key + subprotocol + `input_audio_buffer.append`/`commit`, 24 kHz PCM). **Mulig retirement (uoffisielt) juni 2026** av `gpt-4o-transcribe`/`whisper-1`/
+  `gpt-4o-mini-transcribe` → hvis `openai-batch` plutselig gir 404 på modellen, sett
+  `OPENAI_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize`. `gpt-realtime-whisper` antas trygg.
 - **AWS batch trenger PCM** → `lib/transcription/audio.ts` bruker `ffmpeg-static` (16k mono).
 - Klang.ai vurdert + forkastet: callback/møte-bot-orientert API, ingen brukbar batch-transcribe-fra-lyd.
 
