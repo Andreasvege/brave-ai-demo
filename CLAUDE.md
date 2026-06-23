@@ -17,8 +17,11 @@ eksternt salg) gjelder fortsatt som *retning* for det fremtidige produktet.
   **Bruk `prisma db push` for skjemaendringer** — `prisma migrate dev` feiler pga. drift
   i migrasjonshistorikken.
 - **Transkribering er multi-leverandør** (se «## Transkripsjonsleverandører»). All STT-kode
-  ligger nå i `lib/transcription/` — `lib/transcribe.ts` er **SLETTET**. Azure Speech (nb-NO,
-  fast transcription api-version **2025-10-15**) er standard for både batch og live.
+  ligger nå i `lib/transcription/` — `lib/transcribe.ts` er **SLETTET**. **Standard er live →
+  `aws-live`**: `/record` åpner i **live**-modus, og `DEFAULT_PROVIDER.live = "aws-live"` (i
+  `registry.ts`). FAB og PiP streamer nå også **ekte live** (ikke lenger batch-opptak) med samme
+  standard. Batch-standarden er fortsatt `azure-batch`. Azure Speech (nb-NO, fast transcription
+  api-version **2025-10-15**) er tilgjengelig som valg.
   - **Batch** (standard): server-side dispatcher. **Live**: browser-side; token fra
     `POST /api/speech-token` (Azure) eller `POST /api/transcribe-token/[provider]` (AWS m.fl.)
 - Claude `claude-sonnet-4-5` for analyse (`lib/analyze.ts`) — returnerer `Analysis`-objekt.
@@ -167,3 +170,6 @@ beste på norsk kvalitet/latency/pris. Harness: `scripts/eval-transcription/`
 (`npm run eval-transcribe lydopptak/` → per-fil-rapporter + `SAMMENDRAG.md`; kjør på *mappa*, ikke
 enkeltfil med `ø` i navn pga. NFC/NFD-bug). Funn: `docs/transcription-findings.md`. Siste handoff +
 status: `docs/superpowers/specs/` (nyeste dato). Kvalitet skåres manuelt — harnessen måler kun tall.
+- **`npm run eval-live <fil>`**: slank live-only-variant — én fil inn, de tre live-transkriptene
+  (Azure/AWS/OpenAI Realtime) rett i terminalen, ingen scoring/rapport. Speiler appens live-leverandører
+  fra Node; OpenAI Realtime trenger 24 kHz PCM (Azure/AWS 16 kHz). Entrypoint: `live-compare.ts`.

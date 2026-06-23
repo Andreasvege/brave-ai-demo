@@ -44,3 +44,39 @@ export async function submitRecordedBlob(
   if (!res.ok) throw new Error(data.error || `Feil ${res.status}`);
   return data;
 }
+
+// Sender et ferdig live-transkript til pipelinen (POST /api/calls med tekst, ikke
+// blob — serveren går rett til analyse). Lyden lastes opp best-effort først;
+// feiler den, lagrer vi fortsatt transkriptet. Delt av PiP-widgeten og FAB-en,
+// speiler `submitLive` på /record. Kaster ved feil i selve /api/calls-kallet.
+export async function submitLiveTranscript(
+  transcript: string,
+  opts: {
+    transcribeProvider: string;
+    durationSec?: number;
+    notes?: string;
+    audioFile?: File | null;
+  }
+): Promise<{ id?: string; error?: string }> {
+  let audioUrl: string | null = null;
+  if (opts.audioFile) {
+    try {
+      audioUrl = await uploadAudio(opts.audioFile);
+    } catch {
+      audioUrl = null;
+    }
+  }
+
+  const formData = new FormData();
+  formData.append("transcript", transcript);
+  formData.append("transcribeMode", "live");
+  formData.append("transcribeProvider", opts.transcribeProvider);
+  formData.append("notes", opts.notes ?? "");
+  if (opts.durationSec) formData.append("durationSec", String(opts.durationSec));
+  if (audioUrl) formData.append("audioUrl", audioUrl);
+
+  const res = await fetch("/api/calls", { method: "POST", body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Feil ${res.status}`);
+  return data;
+}

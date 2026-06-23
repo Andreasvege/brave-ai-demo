@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { MicIcon } from "@/components/icons";
 import { PipRecordContent } from "@/components/pip-record-content";
-import { submitRecordedBlob } from "@/lib/upload-audio";
-import { collectRecording, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
+import { submitLiveTranscript } from "@/lib/upload-audio";
+import { finalizeLive, monitorMicLevel, type MicLevelMonitor } from "@/lib/recording";
 import { getDefaultProvider } from "@/lib/transcription/client";
+import { createLiveTranscriber } from "@/lib/transcription/live";
+import type { LiveTranscriber } from "@/lib/transcription/types";
 import { cn } from "@/lib/utils";
 
 type Phase = "idle" | "open" | "connecting" | "recording" | "processing" | "error";
@@ -21,26 +23,37 @@ export function RecordFab() {
   const [error, setError] = useState<string | null>(null);
   const [noAudio, setNoAudio] = useState(false);
 
+  // Live-transkripsjon (aws-live el. valgt leverandør) — brukt i modal-fallbacken
+  // når Document Picture-in-Picture ikke er tilgjengelig.
+  const live = useRef<LiveTranscriber | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const micMonitor = useRef<MicLevelMonitor | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAt = useRef(0);
+  const provider = useRef(getDefaultProvider("live"));
 
   useEffect(() => {
     return () => {
       if (timer.current) clearInterval(timer.current);
       micMonitor.current?.stop();
-      const rec = mediaRecorder.current;
-      if (rec && rec.state !== "inactive") {
-        // Rives ned midt i opptak: finaliser og last opp i stedet for å forkaste.
+      const t = live.current;
+      if (t) {
+        // Rives ned midt i opptak: finaliser og lagre i stedet for å forkaste.
         const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
+        const rec = mediaRecorder.current;
+        const prov = provider.current;
+        live.current = null;
         mediaRecorder.current = null;
-        collectRecording(rec, audioChunks.current)
-          .then((blob) => submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") }))
-          .catch((e) => console.error("FAB-nedriving: lagring av opptak feilet", e));
+        finalizeLive(t, rec, audioChunks.current)
+          .then(({ transcript, audioFile }) => {
+            const cleaned = transcript.replace(/\s+/g, " ").trim();
+            if (!cleaned) return;
+            return submitLiveTranscript(cleaned, { transcribeProvider: prov, durationSec, audioFile });
+          })
+          .catch((e) => console.error("FAB-nedriving: lagring av samtale feilet", e));
       } else {
-        rec?.stream?.getTracks().forEach((t) => t.stop());
+        mediaRecorder.current?.stream?.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
@@ -49,22 +62,35 @@ export function RecordFab() {
     setError(null);
     setPhase("connecting");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const recorder = new MediaRecorder(stream);
-      audioChunks.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.current.push(e.data);
+      provider.current = getDefaultProvider("live");
+      const t = createLiveTranscriber(provider.current);
+      t.onError = (err) => {
+        setError(`Transkribering avbrutt: ${err.message}`);
+        setPhase("error");
       };
+      await t.start();
+      live.current = t;
 
-      recorder.start(500);
-      mediaRecorder.current = recorder;
-      setNoAudio(false);
+      // Ta også opp lyden parallelt (best-effort — live kjører uten lagret lyd ved feil).
       try {
-        micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const recorder = new MediaRecorder(stream);
+        audioChunks.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunks.current.push(e.data);
+        };
+        recorder.start(500);
+        mediaRecorder.current = recorder;
+        setNoAudio(false);
+        try {
+          micMonitor.current = monitorMicLevel(stream, (hasSound) => setNoAudio(!hasSound));
+        } catch {
+          micMonitor.current = null;
+        }
       } catch {
-        micMonitor.current = null;
+        mediaRecorder.current = null;
       }
+
       startedAt.current = Date.now();
       setSeconds(0);
       timer.current = setInterval(
@@ -84,19 +110,27 @@ export function RecordFab() {
 
   async function stopRecording() {
     if (timer.current) clearInterval(timer.current);
-    const recorder = mediaRecorder.current;
-    if (!recorder) return;
+    const t = live.current;
+    if (!t) return;
 
     micMonitor.current?.stop();
     micMonitor.current = null;
     setNoAudio(false);
     const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
-    const blob = await collectRecording(recorder, audioChunks.current);
+    const rec = mediaRecorder.current;
+    live.current = null;
     mediaRecorder.current = null;
 
     setPhase("processing");
     try {
-      await submitRecordedBlob(blob, { durationSec, transcribeProvider: getDefaultProvider("batch") });
+      const { transcript, audioFile } = await finalizeLive(t, rec, audioChunks.current);
+      const cleaned = transcript.replace(/\s+/g, " ").trim();
+      if (!cleaned) {
+        setError("Ingen tale ble gjenkjent — transkriptet er tomt.");
+        setPhase("error");
+        return;
+      }
+      await submitLiveTranscript(cleaned, { transcribeProvider: provider.current, durationSec, audioFile });
       setPhase("idle");
       router.refresh();
     } catch (err) {
@@ -107,6 +141,8 @@ export function RecordFab() {
 
   function cancel() {
     if (timer.current) clearInterval(timer.current);
+    live.current?.stop().catch(() => {});
+    live.current = null;
     const recorder = mediaRecorder.current;
     if (recorder) {
       recorder.stream.getTracks().forEach((t) => t.stop());
@@ -223,7 +259,7 @@ export function RecordFab() {
             {phase === "connecting"
               ? "Kobler til…"
               : phase === "processing"
-              ? "Transkriberer og analyserer…"
+              ? "Lagrer og analyserer…"
               : isRecording
               ? "Tar opp — trykk for å stoppe"
               : "Trykk her for å åpne full versjon med notater"}

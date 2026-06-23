@@ -37,8 +37,8 @@ const BATCH_STEPS: Step[] = [
 
 export default function RecordPage() {
   const router = useRouter();
-  const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("batch");
-  const [provider, setProvider] = useState<ProviderId>(() => getDefaultProvider("batch"));
+  const [transcribeMode, setTranscribeMode] = useState<TranscribeMode>("live");
+  const [provider, setProvider] = useState<ProviderId>(() => getDefaultProvider("live"));
 
   function chooseProvider(id: ProviderId) {
     setProvider(id);

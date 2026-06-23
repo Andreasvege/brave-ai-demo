@@ -22,5 +22,5 @@ export function providerById(id: string): ProviderMeta | undefined {
 
 export const DEFAULT_PROVIDER: Record<TranscribeMode, ProviderId> = {
   batch: "azure-batch",
-  live: "azure-live",
+  live: "aws-live",
 };

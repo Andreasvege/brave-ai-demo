@@ -1,4 +1,27 @@
+import type { LiveTranscriber } from "@/lib/transcription/types";
+
 export type MicLevelMonitor = { stop: () => void };
+
+// Finaliserer en live-samtale: stopper transkriberingen og henter det ferdige
+// transkriptet, og samler det parallelle lydopptaket til en fil (best-effort —
+// uten lyd lagrer vi fortsatt teksten). Delt av PiP-widgeten og FAB-en.
+export async function finalizeLive(
+  transcriber: LiveTranscriber,
+  recorder: MediaRecorder | null,
+  chunks: Blob[]
+): Promise<{ transcript: string; audioFile: File | null }> {
+  const { transcript } = await transcriber.stop();
+  let audioFile: File | null = null;
+  if (recorder) {
+    try {
+      const blob = await collectRecording(recorder, chunks);
+      if (blob.size > 0) audioFile = new File([blob], "opptak.webm", { type: blob.type });
+    } catch {
+      audioFile = null;
+    }
+  }
+  return { transcript, audioFile };
+}
 
 // Overvåker om mikrofonen faktisk gir lyd, via Web Audio. Kaller onChange(false)
 // når det ikke er registrert signal på `silenceMs` ms, og onChange(true) når lyd
